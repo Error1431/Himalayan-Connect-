@@ -53,6 +53,10 @@ router.get('/google/callback', (req, res, next) => {
             return res.redirect(`${frontendUrl}/login?oauth_error=${code}`);
         }
         req.user = user;
+        
+
+        req.frontendUrl = frontendUrl;
+        
         return googleCallback(req, res);
     })(req, res, next);
 });
