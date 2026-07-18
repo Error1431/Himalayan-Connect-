@@ -218,7 +218,8 @@ exports.resendVerification = async (req, res) => {
 // JWTs and hands the browser back to the frontend with them in the URL,
 // since this is a redirect-based OAuth flow rather than an XHR call.
 exports.googleCallback = (req, res) => {
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  // Dynamically adapt the base URL, checking route context first, then env variables, defaulting to local environment
+  const frontendUrl = req.frontendUrl || process.env.FRONTEND_URL || 'http://localhost:3000';
   const user = req.user;
 
   if (!user) {
