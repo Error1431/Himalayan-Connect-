@@ -1,0 +1,61 @@
+// ============================================
+// ORGANIC PRODUCTS DATABASE (with Buy Now)
+// ============================================
+
+export interface Product {
+  id: string;
+  name: string;
+  price: string;
+  priceValue: number;
+  unit: string;
+  region: string;
+  benefits: string;
+  emoji: string;
+  category: string;
+  whyBuy: string;
+}
+
+export const PRODUCTS: Product[] = [
+  // ---- Fruits ----
+  { id: 'apple', name: 'Harsil Apple', price: '₹160-220', priceValue: 190, unit: 'kg', region: 'Uttarkashi', benefits: 'No wax coating, fully organic, export quality', emoji: '🍎', category: 'Fruits', whyBuy: 'Grown at 8,000 ft — crunchier and sweeter than plains apples. No chemicals, no wax.' },
+  { id: 'mango', name: 'Doon Chaunsa Mango', price: '₹140-180', priceValue: 160, unit: 'kg', region: 'Dehradun', benefits: 'Naturally ripened, no carbide', emoji: '🥭', category: 'Fruits', whyBuy: 'Ripened naturally on the tree, not with harmful carbide like market mangoes.' },
+  { id: 'strawberry', name: 'Nainital Strawberry', price: '₹120-160', priceValue: 140, unit: 'kg', region: 'Nainital', benefits: 'Fresh, pesticide-free', emoji: '🍓', category: 'Fruits', whyBuy: 'Picked fresh every morning from cool mountain farms — zero pesticides.' },
+  { id: 'peach', name: 'Mountain Peach', price: '₹80-120', priceValue: 100, unit: 'kg', region: 'Nainital', benefits: 'Mountain grown, juicy sweet', emoji: '🍑', category: 'Fruits', whyBuy: 'Hill peaches ripen slowly in cool climate — extra juicy and sweet.' },
+  { id: 'apricot', name: 'Himalayan Apricot', price: '₹200-280', priceValue: 240, unit: 'kg', region: 'Uttarkashi', benefits: 'Fresh & sun-dried available', emoji: '🍊', category: 'Fruits', whyBuy: 'Rich in Vitamin A & E. Sun-dried apricots are a winter superfood.' },
+  { id: 'walnut', name: 'Pithoragarh Walnut', price: '₹350', priceValue: 350, unit: 'kg', region: 'Pithoragarh', benefits: 'Brain food, Omega-3 rich', emoji: '🌰', category: 'Fruits', whyBuy: 'Thin-shelled Himalayan walnuts with the highest Omega-3 content in India.' },
+  { id: 'kafal', name: 'Kafal (Box Myrtle)', price: '₹60-80', priceValue: 70, unit: 'kg', region: 'Bageshwar', benefits: 'Summer superfruit, seasonal', emoji: '🍒', category: 'Fruits', whyBuy: 'The legendary wild fruit of Uttarakhand — only available April-June. Grab it!' },
+  { id: 'lychee', name: 'Doon Lychee', price: '₹100-140', priceValue: 120, unit: 'kg', region: 'Dehradun', benefits: 'Juicy, organic', emoji: '🔴', category: 'Fruits', whyBuy: 'Famous Dehradun lychee — juicy, aromatic and fully organic.' },
+
+  // ---- Grains ----
+  { id: 'redrice', name: 'Ghariya Chawal (Red Rice)', price: '₹180-220', priceValue: 200, unit: 'kg', region: 'Uttarakhand Hills', benefits: 'Gharat (water mill) ground, nutty flavour, best for kheer', emoji: '🍚', category: 'Grains', whyBuy: 'Ground at traditional village gharat (water mill). Absolutely delicious — its kheer is top-notch! Healthier than white rice with antioxidants, fiber and iron.' },
+  { id: 'mandua', name: 'Mandua (Ragi) Flour', price: '₹120', priceValue: 120, unit: 'kg', region: 'Rudraprayag', benefits: 'Gluten-free, calcium-rich', emoji: '🌾', category: 'Grains', whyBuy: 'Gluten-free & diabetic-friendly. 10x more calcium than wheat. Make authentic Mandua Roti!' },
+  { id: 'jhangora', name: 'Jhangora (Barnyard Millet)', price: '₹90', priceValue: 90, unit: 'kg', region: 'Bageshwar', benefits: 'Easy to digest, kheer special', emoji: '🌿', category: 'Grains', whyBuy: 'The star of famous Jhangora ki Kheer. Light, easy to digest, perfect for fasting.' },
+  { id: 'basmati', name: 'Organic Basmati Rice', price: '₹140', priceValue: 140, unit: 'kg', region: 'Dehradun', benefits: 'Aromatic, chemical-free', emoji: '🍛', category: 'Grains', whyBuy: 'Authentic Dehradun basmati aroma — grown without any chemical fertilizers.' },
+  { id: 'buckwheat', name: 'Lingda/Kuttu (Buckwheat)', price: '₹130', priceValue: 130, unit: 'kg', region: 'Hills', benefits: 'Gluten-free, for Baadi', emoji: '🌱', category: 'Grains', whyBuy: 'Essential for making traditional Baadi. Rich in Vitamin B12 and Vitamin A.' },
+
+  // ---- Pulses ----
+  { id: 'rajma', name: 'Kedarnath Valley Rajma', price: '₹150', priceValue: 150, unit: 'kg', region: 'Rudraprayag', benefits: 'Premium quality, GI tagged', emoji: '🫘', category: 'Pulses', whyBuy: 'GI-tagged Himalayan rajma — cooks faster, tastes creamier than plains rajma.' },
+  { id: 'rajma2', name: 'Lohia Patta Rajma', price: '₹160', priceValue: 160, unit: 'kg', region: 'Pithoragarh', benefits: 'Rare local variety', emoji: '🟤', category: 'Pulses', whyBuy: 'Rare Munsiyari variety — small beans, big flavour. Local favourite!' },
+  { id: 'bhatt', name: 'Bhatt (Black Soybean)', price: '₹140', priceValue: 140, unit: 'kg', region: 'Kumaon', benefits: 'Unique to Uttarakhand', emoji: '⚫', category: 'Pulses', whyBuy: 'Found ONLY in Uttarakhand! Make Bhatt ki Churdkani and Dubuk. Antioxidant powerhouse.' },
+  { id: 'gahat', name: 'Gahat (Horse Gram)', price: '₹110', priceValue: 110, unit: 'kg', region: 'All Uttarakhand', benefits: 'Medicinal — kidney stone remedy', emoji: '🟫', category: 'Pulses', whyBuy: 'Traditional remedy for kidney stones. Essential for Gahat Paranthe and Phaanu.' },
+
+  // ---- Specialty ----
+  { id: 'honey', name: 'Himalayan Organic Honey', price: '₹450-600', priceValue: 525, unit: 'kg', region: 'All Uttarakhand', benefits: 'Raw, unprocessed, multi-floral', emoji: '🍯', category: 'Specialty', whyBuy: 'Raw honey from high-altitude wildflowers — never heated, never mixed. Boosts immunity naturally.' },
+  { id: 'ghee', name: 'Pahadi Desi Ghee', price: '₹650-800', priceValue: 725, unit: 'kg', region: 'Hills', benefits: 'Desi cow, bilona method', emoji: '🧈', category: 'Specialty', whyBuy: 'Made from desi cow milk by traditional bilona method. The secret of Pahadi strength!' },
+  { id: 'turmeric', name: 'Organic Turmeric (Haldi)', price: '₹180', priceValue: 180, unit: 'kg', region: 'Dehradun', benefits: 'High curcumin content', emoji: '🟡', category: 'Specialty', whyBuy: 'Higher curcumin than commercial haldi — anti-inflammatory and immunity booster.' },
+  { id: 'gaazna', name: 'Gaazna Haldi (Rare)', price: '₹220', priceValue: 220, unit: 'kg', region: 'Hills', benefits: 'Rare medicinal variety', emoji: '✨', category: 'Specialty', whyBuy: 'Rare wild turmeric variety with exceptional medicinal properties. Limited stock!' },
+
+  // ---- Homestays ----
+  { id: 'chopta', name: 'Chopta Eco Homestay', price: '₹2,500', priceValue: 2500, unit: 'night', region: 'Rudraprayag', benefits: '20% direct discount, organic meals, trek guide', emoji: '🏡', category: 'Homestays', whyBuy: 'Mini Switzerland of India! Organic meals + Tungnath trek guide + bonfire included.' },
+  { id: 'auli', name: 'Auli Ski Resort Stay', price: '₹3,500', priceValue: 3500, unit: 'night', region: 'Chamoli', benefits: 'Ski equipment & guide included', emoji: '⛷️', category: 'Homestays', whyBuy: "India's best ski destination — equipment and guide included in price." },
+  { id: 'munsiyari', name: 'Munsiyari Homestay', price: '₹2,000', priceValue: 2000, unit: 'night', region: 'Pithoragarh', benefits: 'Panchachuli peaks view', emoji: '🏔️', category: 'Homestays', whyBuy: 'Wake up to the majestic Panchachuli peaks right from your window!' },
+  { id: 'harsil', name: 'Harsil Valley Stay', price: '₹2,800', priceValue: 2800, unit: 'night', region: 'Uttarkashi', benefits: 'Apple orchard, riverside', emoji: '🌊', category: 'Homestays', whyBuy: 'Stay inside an apple orchard by the Bhagirathi river. Pure serenity.' },
+];
+
+export const getProductById = (id: string): Product | undefined =>
+  PRODUCTS.find((p) => p.id === id);
+
+export const getProductsByCategory = (category: string): Product[] =>
+  PRODUCTS.filter((p) => p.category === category);
+
+export const PRODUCT_CATEGORIES = ['Fruits', 'Grains', 'Pulses', 'Specialty', 'Homestays'];

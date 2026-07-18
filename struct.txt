@@ -1,0 +1,50 @@
+HIMALAYAN-CONNECT/
+├── Frontend/
+│   └── src/
+│       ├── components/
+│       │   └── HimalayanAI/                  ← YE FOLDER REPLACE KARO
+│       │       ├── index.jsx                 ← MERI FILE: src/App.tsx
+│       │       │                                (role selection screen + header + tabs +
+│       │       │                                 Switch Role button + ROLE_TABS + ROLE_INFO)
+│       │       │
+│       │       ├── ChatInterface.jsx         ← MERI FILE: src/App.tsx
+│       │       │                                (isme se sirf CHAT wala section:
+│       │       │                                 activeTab === 'chat' block + sendQuery +
+│       │       │                                 ProductCard + input area + typing dots)
+│       │       │
+│       │       ├── FarmerDashboard.jsx       ← MERI FILE: src/App.tsx
+│       │       │                                (isme se 3 sections: dashboard block +
+│       │       │                                 valueadd block + market block)
+│       │       │
+│       │       ├── HomestayDashboard.jsx     ← MERI FILE: src/App.tsx
+│       │       │                                (isme se: recipes block + products block
+│       │       │                                 with B2B pricing banner)
+│       │       │
+│       │       └── CustomerView.jsx          ← MERI FILE: src/App.tsx
+│       │                                        (isme se: products block ka user mode +
+│       │                                         Trace to Farm button wala part)
+│       │
+│       ├── utils/                            ← YE FILES REPLACE/CREATE KARO
+│       │   ├── ai-engine.js                  ← MERI FILE: src/ai.ts          [PURI FILE - REPLACE]
+│       │   ├── language-detect.js            ← MERI FILE: src/ai.ts          [sirf detectLang +
+│       │   │                                    HINGLISH_WORDS + T object]   [REPLACE]
+│       │   ├── profit-calculator.js          ← MERI FILE: src/valueadd.ts    [sirf calcProfit +
+│       │   │                                    calcMargin functions]        [REPLACE]
+│       │   └── api.js                        ← MERI FILE: KOI NAHI ❌
+│       │                                        (tera existing rehne de — bas OpenWeatherMap
+│       │                                         API call yahan add karna)
+│       │
+│       └── data/                             ← NAYA FOLDER BANAO ✨
+│           ├── recipes.js                    ← MERI FILE: src/recipes.ts     [PURI FILE - NEW]
+│           ├── products.js                   ← MERI FILE: src/products.ts    [PURI FILE - NEW]
+│           ├── valueadd.js                   ← MERI FILE: src/valueadd.ts    [PURI FILE - NEW]
+│           └── roledata.js                   ← MERI FILE: src/roledata.ts    [PURI FILE - NEW]
+│
+└── Backend/
+    └── routes/
+        ├── aiRoutes.js                       ← MERI FILE: KOI NAHI ❌
+        │                                        (optional — AI abhi frontend mein hai,
+        │                                         backend endpoint baad mein bana sakta hai)
+        └── weather.js                        ← MERI FILE: KOI NAHI ❌
+                                                 (tera existing — bas .env mein
+                                                  OPENWEATHER_API_KEY daal dena)

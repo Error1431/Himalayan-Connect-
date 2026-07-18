@@ -1,0 +1,240 @@
+# Himalaya Connect
+
+A full-stack platform connecting Himalayan farmers and homestay owners directly with customers — organic produce, village homestays, and a role-aware AI assistant ("Pahadi Mitra"), with zero middlemen.
+
+## Project Structure
+
+```
+Himalaya-Connect/
+├── Backend/     Express + MongoDB API (auth, products, homestays, chat, orders, payments)
+└── Frontend/    React (CRA) client
+```
+
+## Getting Started
+
+### 1. Backend
+
+```bash
+cd Backend
+npm install
+cp .env.example .env   # then fill in your own values (see below)
+npm run dev             # nodemon, http://localhost:5000
+```
+
+### 2. Frontend
+
+```bash
+cd Frontend
+npm install
+npm start                # http://localhost:3000
+```
+
+## Backend Environment Variables (`Backend/.env`)
+
+| Variable | Required | Notes |
+|---|---|---|
+| `MONGO_URI` | Yes | MongoDB connection string (Atlas or local) |
+| `JWT_SECRET` / `JWT_REFRESH_SECRET` | Yes | Any long random strings |
+| `FRONTEND_URL` | Yes | Used for CORS and for links inside verification emails |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` / `SMTP_FROM` | No | For sending real verification emails. If left blank, verification emails are printed to the server console instead — handy for local dev, but set these before deploying. |
+| `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` | For payments | From your Razorpay dashboard |
+| `WEATHER_API_KEY` | For Farmer Dashboard weather | — |
+| `OPENAI_API_KEY` | For the real AI assistant (Week 7) | From platform.openai.com. Without it, chat still works using the local rule-based engine, just without real AI answers for open-ended questions. |
+
+**Important:** `Backend/.env` is git-ignored on purpose and is **not** included in this zip. Create your own from `Backend/.env.example`. If you previously shared a `.env` file containing real database/API credentials with anyone (including in a chat), treat those credentials as compromised and rotate them (change the MongoDB password, regenerate API keys) — don't just delete the file.
+
+## What Changed In This Pass
+
+**Fixed (app-breaking):**
+- `Backend/package.json` was missing `mongoose`, `axios`, and `razorpay` even though the code requires them — a fresh `npm install` would leave the server unable to start. Added them.
+- `Frontend/src/pages/Home.js` imported `../components/AIAssistant`, a path that never existed in the project — this alone would fail the whole React build. The floating AI button now opens the real `/ai-assistant` page instead.
+- `Frontend/src/pages/FarmerDashboard.js` used the same kind of duplicate/broken AI widget (with a placeholder Anthropic API key that was never going to work) — removed it and pointed "AI Advisory" at the same unified `/ai-assistant` page.
+- A stray self-import (`./ui` inside `components/ui/RazorpayCheckoutButton.jsx`) fixed to `.`.
+
+**AI Assistant — now role-locked, per your instructions:**
+- The role picker (the "Farmer / Homestay / Customer" screen) is gone. A logged-in user's assistant is now derived automatically from their account role — a farmer only ever sees the Farmer assistant, a homestay owner only the Homestay assistant, a customer only the Customer assistant. There's no "Switch Role" button anymore.
+- Anyone browsing without an account gets a single, limited **Guest Assistant** that answers basic questions and prompts them to log in or register for the full experience.
+
+**Seller name + profile + messaging on listings:**
+- Every product card (Products page) and homestay card (Homestays page) now shows the farmer/owner's name, linking to their existing public profile page (`/profile/:id`) where their listings are shown.
+- Added a **Message** button on both, which opens `/messages` and starts (or resumes) a chat with that seller — this uses the chat system that already existed in the backend.
+
+**Cart + Wishlist:**
+- Added a **Wishlist** feature (new `WishlistContext`, saved in the browser) with a heart button on every product and homestay card.
+- Added an **Add to Cart** button on products (wired to the existing `CartContext`).
+- Settings page now has two new tabs: **Orders** (pulls from the existing `/api/orders` endpoint) and **Wishlist** (manage saved items, message the seller, or remove them).
+
+**Auth & security (Week 6 checklist):**
+- Registration now generates an email-verification link (`GET /api/auth/verify-email/:token`, valid 24h) and emails it via `nodemailer`. If SMTP isn't configured, the email is printed to the server console instead of failing — useful for local dev.
+- Added `POST /api/auth/resend-verification` for a logged-in user to request a new link.
+- Added rate limiting (5 requests / 15 minutes) on `/api/auth/login` and `/api/auth/register`.
+- Added `express-validator` checks on register/login request bodies (valid email, password length, valid role, etc.), returning clean 400 responses.
+- CORS was already restricted to `FRONTEND_URL` only — left as-is.
+- JWT auth, bcrypt hashing, and protected routes/middleware were already implemented correctly and were left untouched.
+- **Google OAuth ("Sign in with Google")** is wired up end-to-end with Passport.js (`Backend/config/passport.js`, `GET /api/auth/google`, `GET /api/auth/google/callback`, and a `Sign in / Sign up with Google` button on the Login and Register pages, landing on a new `/oauth-success` page). It only activates once you add your own `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` to `Backend/.env` — see below. Until then, the button shows a clear "not configured yet" message instead of crashing.
+
+### Setting up Google Sign-In
+
+1. Go to the [Google Cloud Console credentials page](https://console.cloud.google.com/apis/credentials), create an **OAuth 2.0 Client ID** (type: Web application).
+2. Add `http://localhost:5000/api/auth/google/callback` as an **Authorized redirect URI** (add your production callback URL too, once deployed).
+3. Copy the generated Client ID and Client Secret into `Backend/.env` as `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
+4. Restart the backend. The Google button on Login/Register will now work.
+
+New accounts created via Google land as a **Customer** by default (their email is already verified by Google) — they can upgrade to Farmer/Homestay from Settings if needed.
+
+## Week 7 — Real AI Integration ("Pahadi Mitra" gets smarter)
+
+The chat assistant already had a fast, local rule-based engine
+(`Frontend/src/utils/ai-engine.js`) covering common questions (crop advice, prices,
+recipes, etc.) — that's kept exactly as it was, so nothing that already worked changed.
+
+What's new: when that local engine doesn't have a specific answer, the chat now
+escalates the question to a **real AI backend endpoint**, `POST /api/ai/assistant`,
+which calls OpenAI (`gpt-4o-mini`) with a system prompt grounded in Himalaya Connect's
+actual products, prices, and the three user roles — see `Backend/services/openaiService.js`
+and `PROMPTS.md` (prompt iterations tested + why the final one was chosen).
+
+**How to enable it:**
+1. Get a key from [platform.openai.com/api-keys](https://platform.openai.com/api-keys).
+2. Add `OPENAI_API_KEY=sk-...` to `Backend/.env`.
+3. Restart the backend (`Ctrl+C`, then `npm run dev`).
+4. Open the AI Assistant in the app and ask something the quick-reply buttons don't
+   cover (e.g. "how do I price a new product I've never sold before?") — you'll see the
+   typing/loading indicator while it calls the real API, then a generated answer.
+
+**What happens without a key:** the endpoint responds with a clear "not configured"
+message instead of crashing, the chat shows a small toast, and falls back to the local
+engine's generic response — the feature degrades gracefully rather than breaking the app.
+
+**Error handling implemented:** request timeout (20s), OpenAI rate-limit/quota errors,
+and missing configuration are all caught separately in `Backend/controllers/aiController.js`
+and shown as distinct, human-readable messages rather than a generic failure.
+
+**Rate limiting:** `POST /api/ai/assistant` is capped at 20 requests / 15 minutes per IP
+(`Backend/middleware/rateLimiter.js`) to keep API costs bounded.
+
+## Real Payments, Addresses & Bug Fixes (this pass)
+
+### Real payment flow (Homestay booking + Product Buy Now)
+`Backend/routes/payments.js` used to return **hardcoded fake "success" responses**
+without ever talking to Razorpay — every payment "succeeded" instantly with no real
+transaction. That's fixed: it now calls a real `paymentController.js` that creates a
+genuine Razorpay order and verifies the payment signature server-side.
+
+- **Homestay booking** (`/booking/:id`, `Frontend/src/pages/BookingPage.js`) — this page
+  existed but was **never actually wired into the app**; the route showed a fake "Booking
+  Engine... verifying structural handshake metrics" loading screen that never resolved.
+  It's now connected, with a new **Address step** added to Guest Details, and the final
+  step opens **Razorpay's real checkout modal** (UPI incl. Google Pay/PhonePe, debit/credit
+  cards, netbanking, wallets — all built into one modal) instead of a fake dropdown.
+- **Product "Buy Now"** (`Frontend/src/pages/ProductCheckout.js`, new) — same pattern:
+  address form, then real Razorpay payment, then the order is created.
+- Both remove the old WhatsApp-based "Order"/"Book via WhatsApp" buttons per your
+  instructions — the only paths now are through the app itself with real payment.
+- New `Backend/.env` var needed: `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` (get free test
+  keys at [dashboard.razorpay.com](https://dashboard.razorpay.com) — use test mode, no
+  real money needed for demoing).
+
+### Sample/dummy listings could never actually be booked
+Both the Products and Homestays pages always mixed in a few hardcoded sample cards
+(`dummy_1`, `dummy_2`...) alongside real database listings — clicking "Book Direct" or
+"Buy Now" on one of these led to a dead page (that `/booking/dummy_2` screenshot). Fixed:
+sample listings now only appear when there are **zero real ones** (so the page never
+looks empty), are clearly labelled, and their buttons show an explanatory message instead
+of leading anywhere broken.
+
+### Removed hardcoded/placeholder phone numbers
+Every WhatsApp-based flow (`wa.me/919876543210`, `tel:+919876543210`, etc.) is gone along
+with the WhatsApp buttons themselves, across Products, ProductCard, HomestayDetail, and
+BookingPage. The homestay detail page's "Contact Host" card now shows the **real host's
+phone** (if they've shared one) and a real in-app **Message Host** button instead of a
+hardcoded fake number and a fake email. The Footer/Contact page's placeholder support
+number was also cleaned up to `+91 99999 99999` — **update this to your real support
+number** before going live.
+
+### Google Sign-In: Login vs. Register now behave correctly
+Previously, "Sign in with Google" would silently create a brand-new account for *any*
+Google email, even on the Login page. Now:
+- **Login page** → only signs in if an account with that Google email already exists.
+  If not, it declines with a clear message: *"We couldn't find a Himalaya Connect account
+  for that Google email. Please register first."*
+- **Register page** → creates a new account if one doesn't exist yet (unchanged).
+
+### Theme dropdown in Settings now actually works
+Settings → Preferences → Theme (Light/Dark/Auto) was saved to the database but never
+touched the actual app theme — it was completely disconnected from the real dark/light
+toggle. Clicking **Save Preferences** now applies the selected theme immediately, in sync
+with the navbar's toggle button.
+
+### Toast notifications now disappear
+The "✅ apple added to cart" style notifications (bottom-right) were **never auto-dismissing**
+— they piled up forever. Root cause: two separate, slightly-incompatible toast
+implementations existed in the codebase, and the one actually wired into the app was
+missing its dismiss timer entirely. Fixed — toasts now auto-dismiss after 6 seconds.
+
+### Removed an insecure debug endpoint
+`POST /api/auth/db-verify` was a leftover debug route that let anyone create a user
+record with no password, bypassing normal registration. Removed.
+
+## Deploying (Render backend + Vercel frontend + MongoDB Atlas)
+
+You mentioned you've already connected MongoDB Atlas, deployed the backend on Render, and
+the frontend on Vercel — here's what needs to be set correctly for all three pieces to
+talk to each other:
+
+**On Render (backend), set these environment variables** (Render dashboard → your service
+→ Environment):
+- `MONGO_URI` — your Atlas connection string
+- `JWT_SECRET`, `JWT_REFRESH_SECRET` — any long random strings
+- `FRONTEND_URL` — your **exact** Vercel URL, e.g. `https://himalaya-connect.vercel.app`
+  (no trailing slash — the backend now strips one if you include it anyway, but best to
+  match exactly)
+- `BACKEND_URL` — your **exact** Render URL, e.g. `https://himalaya-connect-api.onrender.com`
+  (required for Google OAuth's callback URL to be correct in production — without this it
+  defaults to `localhost` and Google sign-in will fail on the live site)
+- `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `OPENAI_API_KEY`, `GOOGLE_CLIENT_ID`,
+  `GOOGLE_CLIENT_SECRET`, `SMTP_*` — same as local, from `.env.example`
+- Render's own `PORT` is set automatically — the app already reads `process.env.PORT`
+  correctly.
+
+**On Google Cloud Console** (if using Google Sign-In in production): add your Render
+callback URL as an Authorized redirect URI too, alongside the localhost one:
+`https://your-backend.onrender.com/api/auth/google/callback`
+
+**On Vercel (frontend), set this environment variable**:
+- `REACT_APP_API_URL` — your **exact** Render backend URL, e.g.
+  `https://himalaya-connect-api.onrender.com` (no `/api` at the end, no trailing slash)
+- Redeploy after setting it — Create React App bakes env vars in at build time, so just
+  changing the variable without a rebuild won't take effect.
+
+**Important operational note about Render's free tier:** product/homestay photos and
+avatars are currently stored on local disk (`Backend/uploads/`) via `multer`. Render's
+free tier has an **ephemeral filesystem** — anything written to disk is wiped on every
+redeploy or when the service spins down from inactivity. This isn't a bug introduced in
+this pass, but it will cause uploaded images to disappear over time in production. The
+proper fix is to switch image uploads to a persistent store (Cloudinary, AWS S3, or
+Render's paid persistent disk) — that's a bigger change requiring its own API keys, so
+it's called out here rather than done silently. Let me know if you'd like this wired up
+next.
+
+## Global-Ready Registration + Mobile Menu Fix (this pass)
+
+### Registration is now global (country code, state, country)
+Since Himalaya Connect is going global, `Register.js` now has:
+- A **country code selector** next to the phone number (40 countries, flag + dial code) —
+  the final phone number is stored with its real international dial code
+  (e.g. `+91 98765 43210`), so numbers from different countries never collide.
+- A **Country dropdown** — selecting it also updates the phone's dial code automatically.
+- A **State/Region field** — a proper dropdown of Indian states when Country = India,
+  and a free-text field for any other country (state/province naming varies too much
+  globally for one fixed list).
+- Backend: `User` model gained `phoneCountryCode` and `location.country` fields to store
+  this; existing users are unaffected (both default sensibly — `+91` / `India`).
+
+### Mobile menu was completely non-functional — now fixed
+Found the actual bug: the hamburger (☰) button correctly toggled its icon between ☰ and ✕,
+but **the dropdown panel with the actual links never existed in the code** — clicking it
+visually "did something" but no menu ever appeared, which matches exactly what you saw.
+Added the real mobile menu now: Home, Organic Produce, Homestays, and (depending on login
+state) either Login/Register or Messages/Dashboard/Settings/Logout — all with working
+links, and it closes automatically after tapping a link or navigating.

@@ -1,0 +1,7 @@
+# Use this workspace to collaborate
+workspace:
+  id: c0698cc5-dd44-4417-89ce-08f20b40e26b
+
+localResources:
+  collections:
+    - ../Backend/postman/Himalayan-Connect.postman_collection.json
