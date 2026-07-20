@@ -1,4 +1,5 @@
 const Product = require('../models/Product');
+const { getFileUrl } = require('../middleware/upload');
 
 // Shape a Mongoose Product doc into the flexible object the frontend
 // (ProductCard.js, Products.js, SellerProfile.jsx) already expects —
@@ -119,7 +120,7 @@ exports.createProduct = async (req, res, next) => {
       geoSpatialLocation: (lat !== undefined && lng !== undefined)
         ? { type: 'Point', coordinates: [lng, lat] }
         : undefined,
-      imageUrl: req.file ? `/uploads/${req.file.filename}` : '',
+      imageUrl: req.file ? getFileUrl(req.file) : '',
     });
 
     const populated = await product.populate('farmerId', 'name phone');

@@ -1660,3 +1660,43 @@ textarea.text-white::placeholder {
 .order-btn:active {
   transform: scale(0.98);
 }
+/* ==========================================================================
+   Global dark-mode fix for form controls (this pass).
+   Many forms across the app (Register, Booking, Checkout, dashboards, etc.)
+   hand-write plain Tailwind classes like "border-gray-300" without a dark:
+   variant, or without using the app's semantic bg-surface/text-ink tokens.
+   In dark mode this left the browser's default black input text sitting on
+   a dark background — readable-looking borders, but invisible text as you
+   typed. Rather than hunting down every individual <input> across dozens of
+   files (risking breaking ones that already work), this applies the same
+   "force override" approach already used above for .bg-surface: every native
+   form control gets a correct dark background + light text automatically.
+   ========================================================================== */
+html.dark input:not([type="checkbox"]):not([type="radio"]),
+html.dark select,
+html.dark textarea {
+  background-color: rgb(30 41 59) !important;
+  color: rgb(241 245 249) !important;
+  border-color: rgb(51 65 85) !important;
+}
+
+html.dark input:not([type="checkbox"]):not([type="radio"])::placeholder,
+html.dark textarea::placeholder {
+  color: rgb(148 163 184) !important;
+  opacity: 1;
+}
+
+html.dark input:disabled,
+html.dark select:disabled,
+html.dark textarea:disabled {
+  opacity: 0.6;
+}
+
+/* Autofill (browser-saved login/address data) tends to force its own white
+   background + black text, which has the same invisible-text problem. */
+html.dark input:-webkit-autofill,
+html.dark input:-webkit-autofill:hover,
+html.dark input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0px 1000px rgb(30 41 59) inset !important;
+  -webkit-text-fill-color: rgb(241 245 249) !important;
+}

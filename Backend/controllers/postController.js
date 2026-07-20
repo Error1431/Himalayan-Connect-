@@ -1,11 +1,12 @@
 const Post = require('../models/Post');
+const { getFileUrl } = require('../middleware/upload');
 
 // Farmer/homestay accounts can upload unlimited photo/video posts —
 // each upload just becomes a new Post document.
 exports.createPost = async (req, res) => {
   try {
     const { content, type, caption, location } = req.body;
-    const mediaUrl = req.file ? `/uploads/${req.file.filename}` : undefined;
+    const mediaUrl = req.file ? getFileUrl(req.file) : undefined;
 
     const post = await Post.create({
       author: req.user.id,

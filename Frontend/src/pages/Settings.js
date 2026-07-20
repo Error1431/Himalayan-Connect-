@@ -38,6 +38,13 @@ const Settings = () => {
         documentPreview: null
     });
 
+    const [emailOtp, setEmailOtp] = useState({
+        sending: false,
+        sent: false,
+        verifying: false,
+        code: '',
+    });
+
     const [paymentMethod, setPaymentMethod] = useState({
         type: 'upi',
         upiId: '',
@@ -270,6 +277,37 @@ const Settings = () => {
             alert('Failed to update profile: ' + (error.response?.data?.message || 'Unknown error'));
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleSendEmailOtp = async () => {
+        setEmailOtp((prev) => ({ ...prev, sending: true }));
+        try {
+            const { data } = await api.post('/otp/send-email-otp');
+            addToast(data.message || 'OTP sent to your email', 'success');
+            setEmailOtp((prev) => ({ ...prev, sent: true, code: '' }));
+        } catch (error) {
+            addToast(error.response?.data?.message || 'Could not send OTP', 'error');
+        } finally {
+            setEmailOtp((prev) => ({ ...prev, sending: false }));
+        }
+    };
+
+    const handleVerifyEmailOtp = async () => {
+        if (emailOtp.code.length !== 6) {
+            addToast('Please enter the 6-digit code', 'error');
+            return;
+        }
+        setEmailOtp((prev) => ({ ...prev, verifying: true }));
+        try {
+            await api.post('/otp/verify-email-otp', { otp: emailOtp.code });
+            addToast('Email verified! 🎉', 'success');
+            setEmailOtp({ sending: false, sent: false, verifying: false, code: '' });
+            window.location.reload(); // refresh so user.isEmailVerified reflects everywhere
+        } catch (error) {
+            addToast(error.response?.data?.message || 'Incorrect OTP', 'error');
+        } finally {
+            setEmailOtp((prev) => ({ ...prev, verifying: false }));
         }
     };
 
@@ -731,12 +769,84 @@ const Settings = () => {
                                         <p className="text-sm text-gray-500 dark:text-ink-soft-soft">Verify your identity and payment methods for {user?.role} account</p>
                                     </div>
 
+                                    <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/10 dark:to-pink-900/10 rounded-xl p-6 border-2 border-purple-200 dark:border-purple-900/30">
+                                        <h3 className="font-bold text-ink-soft dark:text-ink-soft mb-1 flex items-center gap-2 text-lg">
+                                            <FaEnvelope className="text-purple-600" /> Email Verification
+                                            {user?.isEmailVerified && <FaCheckCircle className="text-green-500 ml-1" />}
+                                        </h3>
+                                        <p className="text-sm text-gray-500 dark:text-ink-soft-soft mb-4">{user?.email}</p>
+
+                                        {user?.isEmailVerified ? (
+                                            <div className="bg-green-100 dark:bg-green-900/20 border border-green-300 dark:border-green-900/30 rounded-lg p-3 flex items-center gap-2">
+                                                <FaCheckCircle className="text-green-600 text-xl" />
+                                                <p className="font-semibold text-green-800 dark:text-green-400">Your email is verified</p>
+                                            </div>
+                                        ) : !emailOtp.sent ? (
+                                            <button
+                                                type="button"
+                                                onClick={handleSendEmailOtp}
+                                                disabled={emailOtp.sending}
+                                                className="bg-purple-600 text-white px-5 py-2.5 rounded-lg font-semibold hover:bg-purple-700 transition disabled:opacity-50"
+                                            >
+                                                {emailOtp.sending ? 'Sending...' : 'Send Verification Code'}
+                                            </button>
+                                        ) : (
+                                            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+                                                <input
+                                                    type="text"
+                                                    inputMode="numeric"
+                                                    maxLength={6}
+                                                    value={emailOtp.code}
+                                                    onChange={(e) => setEmailOtp((prev) => ({ ...prev, code: e.target.value.replace(/\D/g, '') }))}
+                                                    placeholder="6-digit code"
+                                                    className="px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-surface dark:bg-surface text-ink-soft dark:text-ink-soft dark:border-outline w-40 tracking-widest text-center font-bold"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={handleVerifyEmailOtp}
+                                                    disabled={emailOtp.verifying}
+                                                    className="bg-purple-600 text-white px-5 py-2.5 rounded-lg font-semibold hover:bg-purple-700 transition disabled:opacity-50"
+                                                >
+                                                    {emailOtp.verifying ? 'Verifying...' : 'Verify'}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={handleSendEmailOtp}
+                                                    disabled={emailOtp.sending}
+                                                    className="text-purple-600 text-sm font-semibold hover:underline"
+                                                >
+                                                    Resend
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+
                                     <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border-2 border-blue-200">
                                         <h3 className="font-bold text-ink-soft dark:text-ink-soft mb-4 flex items-center gap-2 text-lg">
                                             <FaIdCard className="text-blue-600" /> Aadhaar Verification
                                             {aadhaar.verified && <FaCheckCircle className="text-green-500 ml-2" />}
                                             {!aadhaar.verified && aadhaar.number && <FaClock className="text-yellow-500 ml-2" />}
                                         </h3>
+
+                                        {!aadhaar.verified && (
+                                            <button
+                                                type="button"
+                                                onClick={async () => {
+                                                    try {
+                                                        const { data } = await api.get('/verification/digilocker');
+                                                        if (data.url) window.location.href = data.url;
+                                                    } catch (error) {
+                                                        addToast(error.response?.data?.message || 'DigiLocker is not connected on this server yet — please upload your Aadhaar document below instead.', 'info');
+                                                    }
+                                                }}
+                                                className="w-full mb-4 flex items-center justify-center gap-2 bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition"
+                                            >
+                                                <FaShieldAlt /> Instantly Verify via DigiLocker
+                                            </button>
+                                        )}
+                                        <p className="text-xs text-gray-400 dark:text-ink-soft-soft mb-4 -mt-2">
+                                            Or upload your Aadhaar document manually below.
+                                        </p>
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                             <div>
@@ -1877,6 +1987,12 @@ const OrdersTab = () => {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [reviewingKey, setReviewingKey] = useState(null); // `${orderId}-${itemIndex}`
+    const [reviewedKeys, setReviewedKeys] = useState({});
+    const [reviewRating, setReviewRating] = useState(5);
+    const [reviewComment, setReviewComment] = useState('');
+    const [submittingReview, setSubmittingReview] = useState(false);
+    const { addToast } = useToast();
 
     useEffect(() => {
         const fetchOrders = async () => {
@@ -1900,6 +2016,39 @@ const OrdersTab = () => {
             case 'shipped':
             case 'confirmed': return 'bg-blue-50 text-blue-700 border-blue-200';
             default: return 'bg-amber-50 text-amber-700 border-amber-200';
+        }
+    };
+
+    const openReviewForm = (key) => {
+        setReviewingKey(key);
+        setReviewRating(5);
+        setReviewComment('');
+    };
+
+    const submitReview = async (productId, key) => {
+        if (!productId) {
+            addToast('This item can\'t be reviewed (missing product reference).', 'error');
+            return;
+        }
+        if (!reviewComment.trim()) {
+            addToast('Please write a short comment about your experience.', 'error');
+            return;
+        }
+        setSubmittingReview(true);
+        try {
+            await api.post('/reviews', {
+                type: 'product',
+                entityId: productId,
+                rating: reviewRating,
+                comment: reviewComment.trim()
+            });
+            addToast('Thanks for your review! 🌟', 'success');
+            setReviewedKeys((prev) => ({ ...prev, [key]: true }));
+            setReviewingKey(null);
+        } catch (err) {
+            addToast(err.response?.data?.message || 'Could not submit review', 'error');
+        } finally {
+            setSubmittingReview(false);
         }
     };
 
@@ -1928,12 +2077,68 @@ const OrdersTab = () => {
                                     {order.status || 'pending'}
                                 </span>
                             </div>
-                            <div className="space-y-1">
-                                {(order.items || []).map((it, idx) => (
-                                    <p key={idx} className="text-sm text-ink-soft dark:text-ink-soft">
-                                        {it.productName} × {it.quantity} — ₹{it.price}
-                                    </p>
-                                ))}
+                            <div className="space-y-2">
+                                {(order.items || []).map((it, idx) => {
+                                    const key = `${order._id}-${idx}`;
+                                    const productId = it.product?._id || it.product;
+                                    return (
+                                        <div key={idx}>
+                                            <div className="flex items-center justify-between">
+                                                <p className="text-sm text-ink-soft dark:text-ink-soft">
+                                                    {it.productName} × {it.quantity} — ₹{it.price}
+                                                </p>
+                                                {reviewedKeys[key] ? (
+                                                    <span className="text-xs text-green-600 font-semibold flex items-center gap-1"><FaCheck /> Reviewed</span>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => openReviewForm(key)}
+                                                        className="text-xs font-semibold text-amber-600 hover:underline flex items-center gap-1"
+                                                    >
+                                                        ⭐ Rate & Review
+                                                    </button>
+                                                )}
+                                            </div>
+                                            {reviewingKey === key && (
+                                                <div className="mt-2 p-3 rounded-lg bg-surface-alt dark:bg-surface-alt border border-gray-200 dark:border-outline space-y-2">
+                                                    <div className="flex gap-1">
+                                                        {[1, 2, 3, 4, 5].map((n) => (
+                                                            <button
+                                                                key={n}
+                                                                type="button"
+                                                                onClick={() => setReviewRating(n)}
+                                                                className={`text-xl ${n <= reviewRating ? 'text-amber-400' : 'text-gray-300 dark:text-outline'}`}
+                                                            >
+                                                                ★
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                    <textarea
+                                                        value={reviewComment}
+                                                        onChange={(e) => setReviewComment(e.target.value)}
+                                                        placeholder="How was the quality? Would you buy again?"
+                                                        rows={2}
+                                                        className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-outline rounded-lg bg-surface dark:bg-surface focus:outline-none focus:ring-2 focus:ring-green-500"
+                                                    />
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            onClick={() => submitReview(productId, key)}
+                                                            disabled={submittingReview}
+                                                            className="text-xs font-bold bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-50"
+                                                        >
+                                                            {submittingReview ? 'Submitting...' : 'Submit Review'}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setReviewingKey(null)}
+                                                            className="text-xs font-semibold text-gray-500 px-3 py-2"
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
                             </div>
                             <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100 dark:border-outline">
                                 <span className="text-xs text-gray-400 dark:text-ink-soft-soft">

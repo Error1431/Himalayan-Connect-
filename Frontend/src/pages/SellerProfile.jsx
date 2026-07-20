@@ -8,6 +8,15 @@ import { useCart } from '../context/CartContext';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
+// Uploaded avatars are stored as relative paths (e.g. "/uploads/avatars/x.png")
+// which need the backend origin prefixed; Google-login avatars are already
+// full https:// URLs and should be used as-is.
+const getAvatarUrl = (avatar) => {
+  if (!avatar) return null;
+  if (avatar.startsWith('http://') || avatar.startsWith('https://')) return avatar;
+  return `${API_BASE_URL}${avatar}`;
+};
+
 export default function SellerProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -460,7 +469,7 @@ export default function SellerProfile() {
           : 'bg-surface border-gray-100'
           }`}>
           <img
-            src={user.avatar || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80'}
+            src={getAvatarUrl(user.avatar) || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80'}
             alt={user.name}
             className="w-24 h-24 rounded-2xl object-cover border-4 border-green-500/20"
           />
@@ -905,7 +914,7 @@ export default function SellerProfile() {
                           }`}>
                           <div className="flex items-center gap-3">
                             <img
-                              src={user.avatar}
+                              src={getAvatarUrl(user.avatar) || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=100&q=80'}
                               alt={user.name}
                               className="w-10 h-10 rounded-full object-cover"
                             />

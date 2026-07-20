@@ -1,3 +1,4 @@
+import ImageCarousel from '../components/ImageCarousel';
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaStar, FaMapMarkerAlt, FaHeart, FaRegHeart, FaCommentDots, FaUserCircle } from 'react-icons/fa';
@@ -160,13 +161,11 @@ const Homestays = () => {
               >
                 <div>
                   <div className="w-full h-56 overflow-hidden bg-surface-alt relative">
-                    <img
-                      src={stay.image}
+                    <ImageCarousel
+                      images={stay.images && stay.images.length > 0 ? stay.images : [stay.image]}
                       alt={stay.homestayName}
-                      className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700 ease-out"
-                      onError={(e) => {
-                        e.target.src = 'https://images.unsplash.com/photo-1510798831971-661eb04b3739?auto=format&fit=crop&w=600&q=80';
-                      }}
+                      className="w-full h-full transform group-hover:scale-105 transition-transform duration-700 ease-out"
+                      onClick={() => navigate(`/homestays/${stay._id}`)}
                     />
                     <span className="absolute top-4 right-4 bg-surface/95 backdrop-blur-sm text-green-800 text-xs font-bold px-3 py-1.5 rounded-full shadow-sm capitalize border border-gray-100">
                       {stay.type}
@@ -206,11 +205,15 @@ const Homestays = () => {
                       </span>
                     )}
 
-                    <div className="flex items-center gap-1.5">
-                      <FaStar className="text-yellow-400 text-sm" />
-                      <span className="text-sm font-bold text-ink-soft-soft dark:border-outline">{stay.rating || '5.0'}</span>
-                      <span className="text-xs text-gray-400 font-normal">({stay.reviews || 0} reviews)</span>
-                    </div>
+                    {stay.reviews > 0 ? (
+                      <div className="flex items-center gap-1.5">
+                        <FaStar className="text-yellow-400 text-sm" />
+                        <span className="text-sm font-bold text-ink-soft-soft dark:border-outline">{stay.rating.toFixed(1)}</span>
+                        <span className="text-xs text-gray-400 font-normal">({stay.reviews} review{stay.reviews === 1 ? '' : 's'})</span>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-400 italic">No reviews yet</span>
+                    )}
 
                     <div className="flex flex-wrap gap-1.5 pt-1">
                       {(stay.tags || []).map((tag, j) => (

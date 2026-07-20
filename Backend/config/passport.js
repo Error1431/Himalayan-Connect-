@@ -45,7 +45,13 @@ if (googleConfigured) {
             user = await User.create({
               name: profile.displayName || email.split('@')[0],
               email: email.toLowerCase(),
-              phone: '0000000000', // placeholder — OAuth doesn't collect a phone number
+              // 'phone' has a unique index — a fixed placeholder here meant
+              // only the very first Google sign-up ever succeeded, and every
+              // one after it failed with a duplicate-key error (which is
+              // exactly the "google_auth_failed" bug reported). Each OAuth
+              // user now gets its own unique placeholder instead.
+              phone: `google-${profile.id}`,
+              phoneCountryCode: '+91',
               password: require('crypto').randomBytes(20).toString('hex'), // unused, but required by the schema
               role: 'customer',
               avatar: profile.photos && profile.photos[0] && profile.photos[0].value,

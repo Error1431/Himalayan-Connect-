@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const User = require('../models/User');
 const { sendVerificationEmail } = require('../utils/email');
+const { checkPhoneVerificationToken } = require('./otpController');
 
 function buildUserResponse(user) {
   const obj = user.toObject ? user.toObject() : user;
@@ -30,7 +31,7 @@ function hashToken(token) {
 
 exports.register = async (req, res, next) => {
   try {
-    const { name, email, phone, phoneCountryCode, password, role, location } = req.body;
+    const { name, email, phone, phoneCountryCode, password, role, location, phoneVerificationToken } = req.body;
 
     if (!name || !email || !phone || !password || !role) {
       return res.status(400).json({ message: 'Name, email, phone, password and role are required' });
@@ -38,6 +39,14 @@ exports.register = async (req, res, next) => {
 
     if (password.length < 6) {
       return res.status(400).json({ message: 'Password must be at least 6 characters long' });
+    }
+
+    // The phone must have gone through the real OTP flow (POST
+    // /api/otp/send-phone-otp then /verify-phone-otp) — this proves the
+    // number actually belongs to the person registering.
+    const isPhoneVerified = await checkPhoneVerificationToken(phone, phoneVerificationToken);
+    if (!isPhoneVerified) {
+      return res.status(400).json({ message: 'Phone number is not verified. Please verify it with the OTP first.' });
     }
 
     const existing = await User.findOne({
@@ -218,8 +227,7 @@ exports.resendVerification = async (req, res) => {
 // JWTs and hands the browser back to the frontend with them in the URL,
 // since this is a redirect-based OAuth flow rather than an XHR call.
 exports.googleCallback = (req, res) => {
-  // Dynamically adapt the base URL, checking route context first, then env variables, defaulting to local environment
-  const frontendUrl = req.frontendUrl || process.env.FRONTEND_URL || 'http://localhost:3000';
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
   const user = req.user;
 
   if (!user) {

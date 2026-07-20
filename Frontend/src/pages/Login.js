@@ -9,6 +9,7 @@ const OAUTH_ERROR_MESSAGES = {
   no_account: "We couldn't find a Himalaya Connect account for that Google email. Please register first — it only takes a moment.",
   google_not_configured: 'Google sign-in is not set up on this server yet. Please use your email and password.',
   google_auth_failed: 'Google sign-in did not complete. Please try again.',
+  google_duplicate_account: 'Something went wrong creating your account. Please try again or register with your email instead.',
   NO_EMAIL: 'Your Google account has no public email address, so we could not sign you in.',
 };
 

@@ -3,36 +3,55 @@ const User = require('../models/User');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { getFileUrl } = require('../middleware/upload');
 
-const uploadDir = 'uploads/avatars/';
-if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
+// See middleware/upload.js for the full explanation — same fix applied here
+// since avatars had their own separate multer config using local disk too.
+const cloudinaryConfigured = !!(
+    process.env.CLOUDINARY_CLOUD_NAME &&
+    process.env.CLOUDINARY_API_KEY &&
+    process.env.CLOUDINARY_API_SECRET
+);
+
+const imageFileFilter = (req, file, cb) => {
+    const filetypes = /jpeg|jpg|png|webp|gif/;
+    const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = filetypes.test(file.mimetype);
+    if (mimetype && extname) return cb(null, true);
+    cb(new Error('Only image files are allowed!'));
+};
+
+let storage;
+if (cloudinaryConfigured) {
+    const cloudinary = require('cloudinary').v2;
+    const { CloudinaryStorage } = require('multer-storage-cloudinary');
+    cloudinary.config({
+        cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+        api_key: process.env.CLOUDINARY_API_KEY,
+        api_secret: process.env.CLOUDINARY_API_SECRET,
+    });
+    storage = new CloudinaryStorage({
+        cloudinary,
+        params: { folder: 'himalaya-connect/avatars', public_id: (req, file) => `avatar-${Date.now()}` },
+    });
+} else {
+    const uploadDir = 'uploads/avatars/';
+    if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    storage = multer.diskStorage({
+        destination: (req, file, cb) => cb(null, uploadDir),
+        filename: (req, file, cb) => {
+            const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+            cb(null, 'avatar-' + uniqueSuffix + path.extname(file.originalname));
+        }
+    });
 }
 
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, uploadDir);
-    },
-    filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, 'avatar-' + uniqueSuffix + path.extname(file.originalname));
-    }
-});
-
 const upload = multer({
-    storage: storage,
+    storage,
     limits: { fileSize: 2 * 1024 * 1024 },
-    fileFilter: (req, file, cb) => {
-        const filetypes = /jpeg|jpg|png|webp|gif/;
-        const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
-        const mimetype = filetypes.test(file.mimetype);
-
-        if (mimetype && extname) {
-            return cb(null, true);
-        } else {
-            cb(new Error('Only image files are allowed!'));
-        }
-    }
+    fileFilter: imageFileFilter
 }).single('avatar');
 
 exports.uploadAvatar = upload;
@@ -106,7 +125,14 @@ exports.updateSettings = async (req, res) => {
                     }
                 }
             }
-            settings.profile.avatar = `/uploads/avatars/${req.file.filename}`;
+            settings.profile.avatar = getFileUrl(req.file, 'avatars');
+
+            // Avatars were only ever saved on the Settings document, which
+            // is what the navbar reads — but public profile pages (seen when
+            // clicking a seller's name from a product/homestay listing) read
+            // the User document instead, so the photo never showed up there.
+            // Keep both in sync on every upload.
+            await User.findByIdAndUpdate(userId, { avatar: settings.profile.avatar });
         }
 
         await settings.save();

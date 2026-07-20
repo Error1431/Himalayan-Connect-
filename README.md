@@ -238,3 +238,102 @@ visually "did something" but no menu ever appeared, which matches exactly what y
 Added the real mobile menu now: Home, Organic Produce, Homestays, and (depending on login
 state) either Login/Register or Messages/Dashboard/Settings/Logout — all with working
 links, and it closes automatically after tapping a link or navigating.
+
+## Real OTP Registration, Reviews, Wishlist Page, Market Analysis & More (this pass)
+
+### Registration now has real phone OTP verification (3 steps)
+1. **Name + Phone** → tap "Send OTP" — a real 6-digit code is generated and sent via SMS.
+2. **Enter the OTP** to verify the number actually belongs to the person registering (with resend + cooldown).
+3. **Email, Country/State/District/Address, Password** → account is created — the backend
+   rejects account creation unless the phone was genuinely OTP-verified in step 2 (can't be skipped).
+
+**SMS provider:** uses [Fast2SMS](https://www.fast2sms.com/dashboard/dev-api) (India-focused, simple REST API). Add `SMS_API_KEY` to `Backend/.env` — **without it, OTPs are printed to the server console instead of being texted**, so registration still fully works end-to-end for local testing/demos without needing a paid SMS account. Swap providers later by editing `Backend/utils/sms.js` only.
+
+### Settings → Account Verification: Email OTP + Aadhaar/DigiLocker
+- **Email verification** now has a real OTP flow (code sent to your email, enter it to verify) — separate from the link-based verification sent at signup, for people who prefer a code.
+- **Aadhaar verification**: the existing manual document-upload flow is unchanged and fully working. Added a **"Instantly Verify via DigiLocker"** button above it.
+  - ⚠️ **Important:** DigiLocker (India's government ID verification service) requires official partner API credentials, obtained by applying at [partners.digilocker.gov.in](https://partners.digilocker.gov.in) or through a KYC aggregator like Setu or Surepass — this is a business approval process that **only you can complete** (I can't obtain these credentials on your behalf). The button and backend route (`Backend/routes/verification.js`) are fully wired up in the same pattern as Google Sign-In — the moment you add `DIGILOCKER_CLIENT_ID` / `DIGILOCKER_CLIENT_SECRET` to `.env` and implement the callback exchange (scaffolded, with comments pointing at DigiLocker's docs), it goes live. Until then, it shows a clear message and falls back to the manual upload, which works today.
+
+### Real product/homestay reviews (replacing the fake "5.0 stars" on everything)
+- The `Review` model existed in the codebase but had **no routes or controller at all** — every product/homestay showed a hardcoded "5.0 (20 reviews)" regardless of reality. Built `Backend/controllers/reviewController.js` + `Backend/routes/reviews.js` from scratch.
+- Buyers can now **rate & review** products they've ordered, from Settings → Orders.
+- Product/homestay cards now show the **real average and count** (or "No reviews yet" instead of a fake number).
+- `ProductCheckout.js` shows real customer reviews before you pay.
+
+### Dedicated Wishlist page + navbar button
+- New `/wishlist` page, plus a heart icon next to Messages in the navbar (desktop and mobile), with a live count badge.
+
+### Cart & Buy Now → real Address + Payment (was previously fake)
+- **Cart "Place Order"** used to just fire an instant fake order with no address or payment at all. It now goes to a real checkout (`/checkout/cart`) — address form, then Razorpay payment (UPI/Card/Netbanking/Wallet).
+
+### Fixed: Google OAuth was broken for every user after the first
+Found the actual cause of the `google_auth_failed` error on your Vercel deployment: new Google sign-ups were all given the same hardcoded placeholder phone number, but `phone` has a unique index in the database — so only the very first person to ever sign in with Google succeeded, and everyone after that hit a duplicate-key error. Each Google account now gets its own unique placeholder. **If you already have a stuck test account** in your Atlas database with phone `0000000000`, delete that one user document (or update its phone) — this code fix only prevents *future* collisions.
+
+### Fixed: profile photo not showing on the public seller/farmer profile
+Avatars uploaded from Settings were only ever saved to the `Settings` document (what the navbar reads) and never copied to the `User` document (what public profile pages read) — now synced on every upload. Also fixed the public profile page rendering the image path directly without the backend's URL prefix, which would 404.
+
+### Farmer Dashboard: new "Market Analysis" tab
+Mirrors the Homestay Dashboard's booking/analytics feel: total revenue, total orders, a real **Recent Orders** table (was silently broken — it called `/orders/farmer`, an endpoint that never existed, so it always showed nothing), and a price/rating overview of your own listed products. New backend endpoint: `GET /api/orders/received`.
+
+### Homestay listings: multi-photo upload + real gallery
+- `AddHomestay.jsx` (the form already existed but had **no image upload at all** and would have been rejected by the backend) now supports 1–6 photos, occupancy (single/double), AC/Non-AC, and amenities — with previews and remove buttons.
+- A prominent **"+ Add Homestay"** button was added to the Homestay Dashboard header.
+- Homestay listing cards now show an **auto-sliding carousel** through all uploaded photos (`components/ImageCarousel.jsx`) instead of one static image.
+- The homestay detail page's hero section was previously **entirely fake** — decorative gradient boxes with emoji (🏔️ 🛏️), not real photos at all. Replaced with a real gallery (main photo + thumbnails) and a full-screen lightbox showing every uploaded photo. Its wishlist heart button was also a fake local toggle disconnected from the rest of the app — now uses the same real wishlist as everywhere else.
+
+### Dark mode: invisible input text, fixed globally
+Many forms across the app used plain Tailwind classes (`border-gray-300`, etc.) without a dark-mode variant, so in dark mode the browser's default black input text sat on a dark background — you could see the field outline but not what you typed. Rather than hunting down every individual input across dozens of files, added a global CSS override (`Frontend/src/index.css`, same technique already used elsewhere in this file) so every native input/select/textarea gets correct dark-mode colors automatically, including browser autofill.
+
+## Fixed: Post images/videos turning into a black box after re-login
+
+**What was happening:** you uploaded a post with a photo/video on the live Vercel+Render
+site, it displayed correctly right away, but after logging out and back in with a
+different account, the post's text details showed up fine while the image/video was just
+a black box.
+
+**Root cause:** Render's free tier has an **ephemeral filesystem** — every file your
+server writes to disk (via `multer`, for post photos, product images, homestay photos,
+avatars — everything) gets **wiped whenever the service redeploys or spins down from
+inactivity** (which free-tier services do automatically after ~15 minutes idle). MongoDB
+Atlas is unaffected (it's a separate, persistent database), so the post's text/details
+kept showing up — the database record was fine — but the actual image file behind that
+`/uploads/...` path was gone, hence the black box. This wasn't a one-off glitch; it would
+keep happening to *every* uploaded file, for every user, on a schedule tied to Render's
+idle timeout.
+
+**Real fix (not a workaround):** `Backend/middleware/upload.js` (shared by posts,
+products, homestays, and rooms) and the separate avatar-upload code in
+`Backend/controllers/settingsController.js` now use **Cloudinary** — a real, persistent,
+CDN-backed file host — when configured, instead of local disk. Cloudinary URLs are full
+`https://res.cloudinary.com/...` links, and every place in the app that renders an
+uploaded file already checks whether the URL is already absolute before deciding to
+prefix the backend's own address — so this required **no frontend changes at all**.
+
+**To activate it:**
+1. Sign up free at [cloudinary.com](https://cloudinary.com/users/register/free) (generous
+   free tier, no credit card required).
+2. From your Cloudinary dashboard, copy your **Cloud name**, **API Key**, and **API Secret**.
+3. Add them to `Backend/.env`:
+   ```
+   CLOUDINARY_CLOUD_NAME=your_cloud_name
+   CLOUDINARY_API_KEY=your_api_key
+   CLOUDINARY_API_SECRET=your_api_secret
+   ```
+4. Also set these three on **Render's environment variables** (not just your local
+   `.env`) before redeploying — this is the part that actually matters for your live site.
+5. Restart the backend. New uploads will now go to Cloudinary and persist permanently,
+   regardless of Render restarts. **Posts/images already uploaded before this fix will
+   still be broken** (their files are already gone) — ask affected users to re-upload
+   once this is live.
+
+Without Cloudinary configured, the app automatically falls back to local disk storage
+(the previous behavior) so nothing breaks — but the black-box-after-restart issue will
+keep happening on Render's free tier until you add these three variables.
+
+**On "dynamic, works with any future .com/.in domain":** this fix also makes the app more
+domain-portable in general — since Cloudinary URLs are stored in full and don't depend on
+your backend's own domain at all, uploaded media keeps working even if you change your
+backend's hosting or custom domain later. The rest of the app (API calls, CORS, OAuth
+callbacks) was already built around `FRONTEND_URL` / `REACT_APP_API_URL` environment
+variables rather than hardcoded addresses (see the Deploying section above) — so pointing
+the whole app at a new custom domain is just an environment-variable change on Render/Vercel, not a code change.

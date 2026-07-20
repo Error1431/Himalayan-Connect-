@@ -134,6 +134,9 @@ mountRoute('/api/farms', ['farms', 'farmRoutes']);
 mountRoute('/api/rooms', ['rooms', 'roomRoutes']);
 mountRoute('/api/payments', ['payments', 'paymentRoutes']);
 mountRoute('/api/profile', ['profile', 'profileRoutes']);
+mountRoute('/api/reviews', ['reviews', 'reviewRoutes']);
+mountRoute('/api/otp', ['otp', 'otpRoutes']);
+mountRoute('/api/verification', ['verification', 'verificationRoutes']);
 
 app.get('/api/orders/farmer', (req, res) => {
   res.json([]);

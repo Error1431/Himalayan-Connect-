@@ -17,7 +17,7 @@ via any medium, is strictly prohibited.`;
 // 2. Automated function files ko scan aur update karne ke liye
 function addHeaderToFiles(dirPath) {
     if (!fs.existsSync(dirPath)) return;
-
+    
     const files = fs.readdirSync(dirPath);
 
     files.forEach(file => {
@@ -33,7 +33,7 @@ function addHeaderToFiles(dirPath) {
             // Sirf JS, JSX, TS, TSX files target karo
             if (/\.(js|jsx|ts|tsx)$/.test(file)) {
                 let content = fs.readFileSync(filePath, 'utf8');
-
+                
                 // Agar pehle se header nahi laga hai toh hi lagao
                 if (!content.includes('Himalayan-Connect. All rights reserved.')) {
                     content = copyrightHeader + content;
@@ -56,7 +56,7 @@ try {
     // Apne source folders ka path yahan check karlo (agar pure project mein chalana hai toh '.')
     // Best practice ke liye hum active code folders par chalate hain
     const targets = ['./src', './routes', './config', './models', './controllers'];
-
+    
     targets.forEach(target => {
         const fullPath = path.resolve(target);
         if (fs.existsSync(fullPath)) {

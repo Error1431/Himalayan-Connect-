@@ -43,7 +43,8 @@ router.get('/google/callback', (req, res, next) => {
     passport.authenticate('google', { session: false }, (err, user, info) => {
         if (err) {
             console.error('Google OAuth error:', err.message);
-            return res.redirect(`${frontendUrl}/login?oauth_error=google_auth_failed`);
+            const code = err.code === 11000 ? 'google_duplicate_account' : 'google_auth_failed';
+            return res.redirect(`${frontendUrl}/login?oauth_error=${code}`);
         }
         if (!user) {
             // info.code is 'NO_ACCOUNT' when someone tried to log in with a
@@ -53,10 +54,6 @@ router.get('/google/callback', (req, res, next) => {
             return res.redirect(`${frontendUrl}/login?oauth_error=${code}`);
         }
         req.user = user;
-        
-
-        req.frontendUrl = frontendUrl;
-        
         return googleCallback(req, res);
     })(req, res, next);
 });

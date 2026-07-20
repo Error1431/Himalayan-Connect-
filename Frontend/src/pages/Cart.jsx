@@ -1,32 +1,13 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FaTrash, FaMinus, FaPlus, FaShoppingCart, FaArrowLeft, FaMapMarkerAlt } from 'react-icons/fa';
+import { FaTrash, FaMinus, FaPlus, FaShoppingCart, FaArrowLeft } from 'react-icons/fa';
 import { useCart } from '../context/CartContext';
-import { useToast } from '../components/ToastContainer';
 import { useTheme } from '../context/ThemeContext';
-import api from '../utils/api';
 
 const Cart = () => {
-  const { items, removeFromCart, updateQty, clearCart, totalItems, totalAmount } = useCart();
-  const { addToast } = useToast();
+  const { items, removeFromCart, updateQty, totalItems, totalAmount } = useCart();
   const { darkMode } = useTheme();
   const navigate = useNavigate();
-  const [placing, setPlacing] = useState(false);
-
-  const handlePlaceOrder = async () => {
-    if (items.length === 0) return;
-    setPlacing(true);
-    try {
-      await api.post('/orders', { items });
-      addToast('🎉 Order request placed! Sellers will be notified to confirm delivery.', 'success');
-      clearCart();
-      navigate('/products');
-    } catch (error) {
-      addToast(error.response?.data?.message || 'Could not place order. Please try again.', 'error');
-    } finally {
-      setPlacing(false);
-    }
-  };
 
   const bg = darkMode ? 'bg-gray-900' : 'bg-surface-alt';
   const cardBg = darkMode ? 'bg-gray-800 border-gray-700' : 'bg-surface border-gray-100';
@@ -118,14 +99,13 @@ const Cart = () => {
                 <span className="text-2xl font-black text-emerald-600">₹{totalAmount}</span>
               </div>
               <button
-                onClick={handlePlaceOrder}
-                disabled={placing}
+                onClick={() => navigate('/checkout/cart')}
                 className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white font-bold shadow-lg transition-all disabled:opacity-60"
               >
-                {placing ? 'Placing order...' : '✅ Place Order Request'}
+                Proceed to Address & Payment →
               </button>
               <p className={`text-xs text-center mt-3 ${textSub}`}>
-                Sellers are notified with your order request and will reach out to confirm delivery/payment.
+                Zero commission — your payment goes straight through to the sellers.
               </p>
             </div>
           </>

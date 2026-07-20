@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { Line, Bar, Doughnut } from 'react-chartjs-2';
 import {
   FaHome, FaCalendarCheck, FaRupeeSign, FaStar,
-  FaUsers, FaChartLine, FaBed, FaCommentDots
+  FaUsers, FaChartLine, FaBed, FaCommentDots, FaPlus
 } from 'react-icons/fa';
 
 const HomestayDashboard = () => {
@@ -87,16 +87,24 @@ const HomestayDashboard = () => {
           <div>
             <h1 className="text-3xl font-bold text-ink-soft dark:text-ink-soft">🏡 Homestay Dashboard</h1>
             <p className="text-gray-500 dark:text-ink-soft-soft mt-1">
-              Trishul Eco-Homestay · Chopta, Rudraprayag
+              Welcome back, {user?.name || 'Host'}
               <span className="ml-2 px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">Zero Commission</span>
             </p>
           </div>
-          <button
-            onClick={() => navigate(`/profile/${user?._id || user?.id}`)}
-            className="mt-4 md:mt-0 flex items-center space-x-2 bg-emerald-50 text-emerald-700 px-4 py-2 rounded-xl hover:bg-emerald-100 transition font-medium border border-emerald-200"
-          >
-            <FaHome /> <span>My Homestay Profile</span>
-          </button>
+          <div className="flex flex-wrap gap-3 mt-4 md:mt-0">
+            <button
+              onClick={() => navigate('/homestay/add-listing')}
+              className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-xl hover:bg-green-700 transition font-semibold shadow-sm"
+            >
+              <FaPlus /> <span>Add Homestay</span>
+            </button>
+            <button
+              onClick={() => navigate(`/profile/${user?._id || user?.id}`)}
+              className="flex items-center space-x-2 bg-emerald-50 text-emerald-700 px-4 py-2 rounded-xl hover:bg-emerald-100 transition font-medium border border-emerald-200"
+            >
+              <FaHome /> <span>My Homestay Profile</span>
+            </button>
+          </div>
         </div>
 
         {/* Stats */}

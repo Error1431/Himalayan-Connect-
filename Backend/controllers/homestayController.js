@@ -1,4 +1,5 @@
 const Homestay = require('../models/Homestay');
+const { getFileUrl } = require('../middleware/upload');
 
 function formatHomestay(doc) {
   const h = doc.toObject ? doc.toObject() : doc;
@@ -20,6 +21,12 @@ function formatHomestay(doc) {
     district: h.location?.district,
     price: lowestPrice,
     type,
+    rating: h.ratings?.totalReviews > 0 ? h.ratings.overall : undefined,
+    reviews: h.ratings?.totalReviews || 0,
+    // Relative paths (e.g. "/uploads/x.jpg") — the frontend prefixes these
+    // with its configured API base URL when rendering.
+    images: (h.images || []).map((img) => (typeof img === 'string' ? img : img.url)).filter(Boolean),
+    image: h.images?.[0] ? (typeof h.images[0] === 'string' ? h.images[0] : h.images[0].url) : undefined,
   };
 }
 
@@ -67,7 +74,8 @@ exports.createHomestay = async (req, res, next) => {
   try {
     const {
       homestayName, village, district, price, pricePerNight, rooms,
-      description, tagline, wifi, meals, parking, bonfire
+      description, tagline, wifi, meals, parking, bonfire,
+      occupancy, acType
     } = req.body;
 
     const finalPrice = Number(price ?? pricePerNight);
@@ -75,6 +83,12 @@ exports.createHomestay = async (req, res, next) => {
     if (!homestayName || !finalPrice) {
       return res.status(400).json({ message: 'Homestay name and price are required' });
     }
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ message: 'At least 1 photo is required' });
+    }
+
+    const occupancyLabel = occupancy === 'double' ? 'Double' : 'Single';
+    const acLabel = acType === 'ac' ? 'AC' : 'Non-AC';
 
     const homestay = await Homestay.create({
       ownerId: req.user.id,
@@ -87,11 +101,12 @@ exports.createHomestay = async (req, res, next) => {
         state: 'Uttarakhand'
       },
       roomTypes: [{
-        name: 'Standard Room',
-        capacity: 2,
+        name: `${occupancyLabel} Room (${acLabel})`,
+        capacity: occupancy === 'double' ? 2 : 1,
         totalRooms: Number(rooms) || 1,
         availableRooms: Number(rooms) || 1,
-        pricing: { basePrice: finalPrice }
+        pricing: { basePrice: finalPrice },
+        amenities: [acLabel]
       }],
       facilities: {
         wifi: Boolean(wifi),
@@ -99,7 +114,7 @@ exports.createHomestay = async (req, res, next) => {
         parking: Boolean(parking),
         bonfire: Boolean(bonfire)
       },
-      images: req.file ? [{ url: `/uploads/${req.file.filename}` }] : []
+      images: req.files.map((f) => ({ url: getFileUrl(f) }))
     });
 
     const populated = await homestay.populate('ownerId', 'name phone');

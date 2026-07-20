@@ -10,6 +10,8 @@ import OAuthSuccess from './pages/OAuthSuccess';
 import BookingPage from './pages/BookingPage';
 import BookingConfirmation from './pages/BookingConfirmation';
 import ProductCheckout from './pages/ProductCheckout';
+import CartCheckout from './pages/CartCheckout';
+import Wishlist from './pages/Wishlist';
 import Register from './pages/Register';
 import NotFound from './pages/NotFound';
 import FarmerDashboard from './pages/FarmerDashboard';
@@ -800,6 +802,12 @@ function AppContent() {
           } />
           <Route path="/checkout/product/:id" element={
             <div style={{ paddingTop: 64 }}><PrivateRoute><ProductCheckout /></PrivateRoute></div>
+          } />
+          <Route path="/checkout/cart" element={
+            <div style={{ paddingTop: 64 }}><PrivateRoute><CartCheckout /></PrivateRoute></div>
+          } />
+          <Route path="/wishlist" element={
+            <div style={{ paddingTop: 64 }}><PrivateRoute><Wishlist /></PrivateRoute></div>
           } />
           <Route path="/profile/:id" element={<SellerProfile />} />
           <Route path="/support/contact" element={<ContactPage />} />

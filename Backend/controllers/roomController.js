@@ -1,4 +1,5 @@
 const Room = require('../models/Room');
+const { getFileUrl } = require('../middleware/upload');
 
 // POST /api/rooms  (protected — homestay owner adds a room, multipart with up to 5 images)
 exports.createRoom = async (req, res) => {
@@ -12,7 +13,7 @@ exports.createRoom = async (req, res) => {
       return res.status(400).json({ message: 'Room name and price are required' });
     }
 
-    const images = (req.files || []).map((f) => `/uploads/${f.filename}`);
+    const images = (req.files || []).map((f) => getFileUrl(f));
 
     const room = await Room.create({
       owner: req.user.id,

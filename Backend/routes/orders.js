@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const Order = require('../models/Order');
 const Product = require('../models/Product');
 const authMiddleware = require('../middleware/auth');
@@ -94,6 +95,35 @@ router.post('/', protect, async (req, res) => {
             message: 'Error creating order',
             error: error.message
         });
+    }
+});
+
+// GET /api/orders/received — orders placed AGAINST this user's products
+// (i.e. this user is the seller/farmer, not the buyer). Powers the
+// "Recent Orders" table on the Farmer Dashboard's Market Analysis tab.
+router.get('/received', protect, async (req, res) => {
+    try {
+        const userId = req.user.id || req.user._id;
+        const { limit = 10 } = req.query;
+
+        const orders = await Order.find({ farmer: userId })
+            .populate('buyer', 'name email phone')
+            .sort({ createdAt: -1 })
+            .limit(parseInt(limit));
+
+        const totalRevenue = await Order.aggregate([
+            { $match: { farmer: new mongoose.Types.ObjectId(userId), 'payment.status': 'paid' } },
+            { $group: { _id: null, total: { $sum: '$totalAmount' } } }
+        ]);
+
+        res.json({
+            success: true,
+            orders,
+            totalRevenue: totalRevenue[0]?.total || 0,
+            totalOrders: await Order.countDocuments({ farmer: userId })
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: 'Error fetching received orders', error: error.message });
     }
 });
 

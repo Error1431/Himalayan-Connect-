@@ -15,7 +15,7 @@ const router = express.Router();
 router.get('/mine', protect, getMyHomestays);
 router.get('/', getHomestays);
 router.get('/:id', getHomestayById);
-router.post('/', protect, authorize('homestay_owner'), upload.single('image'), createHomestay);
+router.post('/', protect, authorize('homestay_owner'), upload.array('images', 6), createHomestay);
 router.put('/:id', protect, updateHomestay);
 router.delete('/:id', protect, deleteHomestay);
 

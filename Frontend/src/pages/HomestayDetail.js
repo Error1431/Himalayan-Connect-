@@ -10,6 +10,8 @@ import {
     FaShareAlt, FaCamera, FaShieldAlt
 } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
+import { useWishlist } from '../context/WishlistContext';
+import { resolveImageUrl } from '../utils/media';
 
 const API = process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL}/api` : 'http://localhost:5000/api';
 
@@ -17,12 +19,13 @@ const HomestayDetail = () => {
     const { slug } = useParams();
     const navigate = useNavigate();
     const { user } = useAuth();
+    const { isWishlisted, toggleWishlist } = useWishlist();
 
     const [homestay, setHomestay] = useState(null);
     const [loading, setLoading] = useState(true);
     const [activeImage, setActiveImage] = useState(0);
+    const [showGallery, setShowGallery] = useState(false);
     const [activeTab, setActiveTab] = useState('overview');
-    const [wishlist, setWishlist] = useState(false);
     const [selectedRoom, setSelectedRoom] = useState(null);
     const [checkIn, setCheckIn] = useState('');
     const [checkOut, setCheckOut] = useState('');
@@ -367,6 +370,10 @@ const HomestayDetail = () => {
 
     const data = homestay || sampleHomestay;
     const reviews = sampleReviews;
+    const galleryImages = data.images && data.images.length > 0
+        ? data.images
+        : ['https://images.unsplash.com/photo-1518780664697-55e3ad937233?auto=format&fit=crop&w=1200&q=80'];
+    const wishlisted = isWishlisted(data._id, 'room');
 
     if (loading) {
         return (
@@ -394,27 +401,52 @@ const HomestayDetail = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 rounded-2xl overflow-hidden mb-8 h-96">
 
                 {/* Main Image */}
-                <div className="lg:col-span-2 bg-gradient-to-br from-green-200 to-emerald-300 flex items-center justify-center relative">
-                    <div className="text-center text-white">
-                        <div className="text-9xl mb-4">🏔️</div>
-                        <p className="text-lg font-semibold text-green-800">{data.homestayName}</p>
-                        <p className="text-sm text-green-700">{data.location?.village}, {data.location?.district}</p>
-                    </div>
+                <div
+                    className="lg:col-span-2 relative cursor-pointer group"
+                    onClick={() => setShowGallery(true)}
+                >
+                    <img
+                        src={resolveImageUrl(galleryImages[activeImage])}
+                        alt={data.homestayName}
+                        className="w-full h-full object-cover group-hover:brightness-90 transition"
+                        onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1518780664697-55e3ad937233?auto=format&fit=crop&w=1200&q=80'; }}
+                    />
+                    {galleryImages.length > 1 && (
+                        <span className="absolute bottom-4 right-4 bg-black/60 text-white text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5">
+                            <FaCamera /> {galleryImages.length} photos — view all
+                        </span>
+                    )}
 
                     {/* Wishlist & Share Buttons */}
                     <div className="absolute top-4 right-4 flex gap-2">
                         <button
-                            onClick={() => {
-                                setWishlist(!wishlist);
-                                toast.success(wishlist ? 'Removed from wishlist' : 'Added to wishlist! ❤️');
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (!user) {
+                                    toast.info('Please login to save to your wishlist');
+                                    navigate('/login');
+                                    return;
+                                }
+                                toggleWishlist({
+                                    id: data._id,
+                                    type: 'room',
+                                    name: data.homestayName,
+                                    price: data.price || data.roomTypes?.[0]?.pricing?.basePrice,
+                                    unit: 'night',
+                                    image: galleryImages[0],
+                                    sellerId: data.hostId || data.owner,
+                                    sellerName: data.hostName,
+                                });
+                                toast.success(wishlisted ? 'Removed from wishlist' : 'Added to wishlist! ❤️');
                             }}
-                            className={`p-3 rounded-full shadow-lg transition ${wishlist ? 'bg-red-500 text-white' : 'bg-surface dark:bg-surface text-ink-soft-soft dark:text-ink-soft-soft'
+                            className={`p-3 rounded-full shadow-lg transition ${wishlisted ? 'bg-red-500 text-white' : 'bg-surface dark:bg-surface text-ink-soft-soft dark:text-ink-soft-soft'
                                 }`}
                         >
                             <FaHeart />
                         </button>
                         <button
-                            onClick={() => {
+                            onClick={(e) => {
+                                e.stopPropagation();
                                 navigator.clipboard.writeText(window.location.href);
                                 toast.success('Link copied! 📋');
                             }}
@@ -432,22 +464,68 @@ const HomestayDetail = () => {
                     )}
                 </div>
 
-                {/* Side Images */}
+                {/* Side Images (thumbnails) */}
                 <div className="hidden lg:grid grid-rows-2 gap-3">
-                    <div className="bg-gradient-to-br from-blue-200 to-cyan-300 flex items-center justify-center rounded-xl">
-                        <div className="text-center">
-                            <div className="text-5xl">🛏️</div>
-                            <p className="text-xs text-blue-700 mt-1">Cozy Rooms</p>
-                        </div>
-                    </div>
-                    <div className="bg-gradient-to-br from-yellow-200 to-orange-200 flex items-center justify-center rounded-xl">
-                        <div className="text-center">
-                            <div className="text-5xl">🍽️</div>
-                            <p className="text-xs text-orange-700 mt-1">Farm-to-Table Food</p>
-                        </div>
-                    </div>
+                    {[1, 2].map((i) => (
+                        galleryImages[i] ? (
+                            <div
+                                key={i}
+                                onClick={() => { setActiveImage(i); setShowGallery(true); }}
+                                className="rounded-xl overflow-hidden cursor-pointer relative group"
+                            >
+                                <img
+                                    src={resolveImageUrl(galleryImages[i])}
+                                    alt={`${data.homestayName} ${i + 1}`}
+                                    className="w-full h-full object-cover group-hover:brightness-90 transition"
+                                    onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1518780664697-55e3ad937233?auto=format&fit=crop&w=600&q=80'; }}
+                                />
+                                {i === 2 && galleryImages.length > 3 && (
+                                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-white font-bold">
+                                        +{galleryImages.length - 3} more
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <div key={i} className="rounded-xl bg-surface-alt dark:bg-gray-800 flex items-center justify-center text-gray-300 dark:text-gray-600">
+                                <FaCamera size={28} />
+                            </div>
+                        )
+                    ))}
                 </div>
             </div>
+
+            {/* Full gallery lightbox — shows all uploaded photos */}
+            {showGallery && (
+                <div
+                    className="fixed inset-0 bg-black/90 z-50 flex flex-col items-center justify-center p-4"
+                    onClick={() => setShowGallery(false)}
+                >
+                    <button
+                        onClick={() => setShowGallery(false)}
+                        className="absolute top-4 right-4 text-white text-3xl hover:text-gray-300"
+                    >
+                        &times;
+                    </button>
+                    <img
+                        src={resolveImageUrl(galleryImages[activeImage])}
+                        alt={`${data.homestayName} ${activeImage + 1}`}
+                        className="max-h-[75vh] max-w-full object-contain rounded-lg"
+                        onClick={(e) => e.stopPropagation()}
+                    />
+                    <div className="flex gap-2 mt-4 overflow-x-auto max-w-full px-4" onClick={(e) => e.stopPropagation()}>
+                        {galleryImages.map((img, i) => (
+                            <img
+                                key={i}
+                                src={resolveImageUrl(img)}
+                                alt={`thumbnail ${i + 1}`}
+                                onClick={() => setActiveImage(i)}
+                                className={`w-16 h-16 object-cover rounded-lg cursor-pointer border-2 flex-shrink-0 ${i === activeImage ? 'border-green-500' : 'border-transparent opacity-60'}`}
+                            />
+                        ))}
+                    </div>
+                    <p className="text-white text-sm mt-2">{activeImage + 1} / {galleryImages.length}</p>
+                </div>
+            )}
 
             {/* ===== MAIN CONTENT ===== */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

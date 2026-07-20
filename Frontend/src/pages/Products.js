@@ -287,11 +287,15 @@ const Products = () => {
                         <FaUserCircle className="text-sm" /> {getSellerName(product)}
                       </span>
                     )}
-                    <div className="flex items-center gap-1.5 bg-surface-alt dark:bg-surface-alt w-fit px-2.5 py-1 rounded-lg border border-gray-100 dark:border-outline">
-                      <FaStar className="text-amber-400 text-sm" />
-                      <span className="text-sm font-bold text-ink-soft-soft dark:text-ink-soft">{product.ratings?.average || '5.0'}</span>
-                      <span className="text-xs text-gray-400 dark:text-ink-soft-soft">({product.ratings?.count || 20} reviews)</span>
-                    </div>
+                    {product.ratings?.count > 0 ? (
+                      <div className="flex items-center gap-1.5 bg-surface-alt dark:bg-surface-alt w-fit px-2.5 py-1 rounded-lg border border-gray-100 dark:border-outline">
+                        <FaStar className="text-amber-400 text-sm" />
+                        <span className="text-sm font-bold text-ink-soft-soft dark:text-ink-soft">{product.ratings.average.toFixed(1)}</span>
+                        <span className="text-xs text-gray-400 dark:text-ink-soft-soft">({product.ratings.count} review{product.ratings.count === 1 ? '' : 's'})</span>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-400 dark:text-ink-soft-soft italic">No reviews yet</span>
+                    )}
                   </div>
                 </div>
                 <div className="p-5 pt-0 mt-4 border-t border-gray-50/60 dark:border-outline">

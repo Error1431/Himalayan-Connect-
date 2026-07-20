@@ -21,7 +21,8 @@ import {
   FaPlus, FaChartLine, FaSeedling,
   FaCloudSun, FaTimes, FaMapMarkerAlt,
   FaImage, FaTrash, FaCheckCircle, FaClock, FaArrowUp, FaArrowDown,
-  FaCalendarAlt, FaWarehouse, FaInfoCircle, FaCrosshairs, FaSearchLocation
+  FaCalendarAlt, FaWarehouse, FaInfoCircle, FaCrosshairs, FaSearchLocation,
+  FaChartBar, FaStar
 } from 'react-icons/fa';
 
 import LocationPicker from '../components/LocationPicker';
@@ -54,6 +55,7 @@ const FarmerDashboard = () => {
   const [uploading, setUploading] = useState(false);
   const [fetchedProducts, setFetchedProducts] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [marketData, setMarketData] = useState({ totalRevenue: 0, totalOrders: 0 });
   const [schedule, setSchedule] = useState([]);
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('All');
   const [dashboardLoading, setDashboardLoading] = useState(true);
@@ -70,7 +72,7 @@ const FarmerDashboard = () => {
     try {
       const [productsRes, ordersRes, scheduleRes] = await Promise.allSettled([
         api.get('/products/my-products'),
-        api.get('/orders/farmer'),
+        api.get('/orders/received'),
         api.get('/collection-schedule')
       ]);
 
@@ -83,6 +85,7 @@ const FarmerDashboard = () => {
         const data = ordersRes.value.data;
         const list = Array.isArray(data) ? data : (data.orders || data.data || []);
         setOrders(list);
+        setMarketData({ totalRevenue: data.totalRevenue || 0, totalOrders: data.totalOrders || list.length });
       }
       if (scheduleRes.status === 'fulfilled') {
         const data = scheduleRes.value.data;
@@ -379,6 +382,7 @@ const FarmerDashboard = () => {
   const tabs = [
     { id: 'overview', label: 'Overview', icon: FaChartLine },
     { id: 'products', label: 'My Products', icon: FaBox },
+    { id: 'market', label: 'Market Analysis', icon: FaChartBar },
     { id: 'schedule', label: 'Schedule', icon: FaTruck },
     { id: 'harvest', label: 'Harvest', icon: FaSeedling },
     { id: 'weather', label: 'Weather', icon: FaCloudSun }
@@ -672,6 +676,90 @@ const FarmerDashboard = () => {
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === 'market' && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="bg-surface dark:bg-surface rounded-xl shadow p-5 border border-gray-100 dark:border-outline">
+                <p className="text-xs text-ink-soft-soft dark:text-ink-soft-soft font-semibold uppercase">Total Revenue</p>
+                <p className="text-2xl font-black text-green-600 mt-1">₹{marketData.totalRevenue.toLocaleString()}</p>
+              </div>
+              <div className="bg-surface dark:bg-surface rounded-xl shadow p-5 border border-gray-100 dark:border-outline">
+                <p className="text-xs text-ink-soft-soft dark:text-ink-soft-soft font-semibold uppercase">Total Orders</p>
+                <p className="text-2xl font-black text-ink-soft dark:text-ink-soft mt-1">{marketData.totalOrders}</p>
+              </div>
+              <div className="bg-surface dark:bg-surface rounded-xl shadow p-5 border border-gray-100 dark:border-outline">
+                <p className="text-xs text-ink-soft-soft dark:text-ink-soft-soft font-semibold uppercase">Products Listed</p>
+                <p className="text-2xl font-black text-ink-soft dark:text-ink-soft mt-1">{fetchedProducts.length}</p>
+              </div>
+            </div>
+
+            <div className="bg-surface dark:bg-surface rounded-xl shadow p-5 border border-gray-100 dark:border-outline">
+              <h3 className="font-bold text-ink-soft dark:text-ink-soft mb-4 flex items-center gap-2">
+                <FaChartBar className="text-green-600" /> Recent Orders
+              </h3>
+              {orders.length === 0 ? (
+                <p className="text-sm text-gray-400 dark:text-ink-soft-soft italic">No orders received yet. Once buyers order your products, they'll show up here.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-xs text-ink-soft-soft dark:text-ink-soft-soft uppercase border-b border-gray-100 dark:border-outline">
+                        <th className="pb-2 pr-4">Order ID</th>
+                        <th className="pb-2 pr-4">Buyer</th>
+                        <th className="pb-2 pr-4">Items</th>
+                        <th className="pb-2 pr-4">Amount</th>
+                        <th className="pb-2">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {orders.slice(0, 8).map((o) => (
+                        <tr key={o._id} className="border-b border-gray-50 dark:border-outline last:border-0">
+                          <td className="py-2.5 pr-4 font-mono text-xs text-green-600">{o._id.slice(-8).toUpperCase()}</td>
+                          <td className="py-2.5 pr-4">{o.buyer?.name || o.buyerName || 'Customer'}</td>
+                          <td className="py-2.5 pr-4">{(o.items || []).map((it) => it.productName).join(', ')}</td>
+                          <td className="py-2.5 pr-4 font-bold">₹{o.totalAmount}</td>
+                          <td className="py-2.5">
+                            <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+                              o.status === 'delivered' ? 'bg-green-50 text-green-700' :
+                              o.status === 'cancelled' ? 'bg-red-50 text-red-700' :
+                              o.status === 'confirmed' ? 'bg-blue-50 text-blue-700' : 'bg-amber-50 text-amber-700'
+                            }`}>
+                              {o.status || 'pending'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            <div className="bg-surface dark:bg-surface rounded-xl shadow p-5 border border-gray-100 dark:border-outline">
+              <h3 className="font-bold text-ink-soft dark:text-ink-soft mb-4 flex items-center gap-2">
+                <FaStar className="text-amber-400" /> Your Products — Price & Rating
+              </h3>
+              {fetchedProducts.length === 0 ? (
+                <p className="text-sm text-gray-400 dark:text-ink-soft-soft italic">Add your first product to see it here.</p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {fetchedProducts.map((p) => (
+                    <div key={p._id} className="border border-gray-100 dark:border-outline rounded-lg p-3">
+                      <p className="font-semibold text-sm text-ink-soft dark:text-ink-soft truncate">{p.productName}</p>
+                      <p className="text-green-600 font-bold">₹{p.pricing?.basePrice || p.basePrice}/{p.pricing?.unit || p.unit || 'kg'}</p>
+                      {p.ratings?.count > 0 ? (
+                        <p className="text-xs text-amber-500 mt-1">★ {p.ratings.average.toFixed(1)} ({p.ratings.count} review{p.ratings.count === 1 ? '' : 's'})</p>
+                      ) : (
+                        <p className="text-xs text-gray-400 dark:text-ink-soft-soft mt-1 italic">No reviews yet</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
 

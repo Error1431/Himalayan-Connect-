@@ -3,17 +3,19 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useCart } from '../context/CartContext';
+import { useWishlist } from '../context/WishlistContext';
 import api, { API_BASE_URL } from '../utils/api';
 import {
   FaMountain, FaBars, FaTimes, FaUser,
   FaSignOutAlt, FaLeaf, FaHome, FaCog,
-  FaEnvelope, FaChevronDown, FaSun, FaMoon, FaShoppingCart
+  FaEnvelope, FaChevronDown, FaSun, FaMoon, FaShoppingCart, FaHeart
 } from 'react-icons/fa';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { totalItems } = useCart();
+  const { totalItems: wishlistCount } = useWishlist();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -158,6 +160,15 @@ const Navbar = () => {
                     {unreadMessages > 0 && (
                       <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                         {unreadMessages > 9 ? '9+' : unreadMessages}
+                      </span>
+                    )}
+                  </Link>
+
+                  <Link to="/wishlist" className="relative" title="Wishlist">
+                    <FaHeart className="text-xl text-red-500" />
+                    {wishlistCount > 0 && (
+                      <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                        {wishlistCount > 9 ? '9+' : wishlistCount}
                       </span>
                     )}
                   </Link>
@@ -316,6 +327,18 @@ const Navbar = () => {
                     {unreadMessages > 0 && (
                       <span className="ml-auto bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                         {unreadMessages > 9 ? '9+' : unreadMessages}
+                      </span>
+                    )}
+                  </Link>
+                  <Link
+                    to="/wishlist"
+                    onClick={() => setMobileMenu(false)}
+                    className={`flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium ${isActive('/wishlist')} ${isDark ? 'hover:bg-gray-800' : 'hover:bg-surface-alt'}`}
+                  >
+                    <FaHeart className="text-red-500" /> Wishlist
+                    {wishlistCount > 0 && (
+                      <span className="ml-auto bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                        {wishlistCount > 9 ? '9+' : wishlistCount}
                       </span>
                     )}
                   </Link>
