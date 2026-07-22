@@ -96,9 +96,13 @@ exports.createProduct = async (req, res, next) => {
     if (!productName || !basePrice) {
       return res.status(400).json({ message: 'Product name and base price are required' });
     }
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ message: 'At least 1 product photo is required' });
+    }
 
     const lat = locationLat ? Number(locationLat) : undefined;
     const lng = locationLng ? Number(locationLng) : undefined;
+    const imageUrls = req.files.map((f) => getFileUrl(f));
 
     const product = await Product.create({
       farmerId: req.user.id,
@@ -120,7 +124,8 @@ exports.createProduct = async (req, res, next) => {
       geoSpatialLocation: (lat !== undefined && lng !== undefined)
         ? { type: 'Point', coordinates: [lng, lat] }
         : undefined,
-      imageUrl: req.file ? getFileUrl(req.file) : '',
+      imageUrl: imageUrls[0] || '', // kept for older UI bits that only read a single image
+      images: imageUrls.map((url) => ({ url })),
     });
 
     const populated = await product.populate('farmerId', 'name phone');

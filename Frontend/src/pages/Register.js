@@ -8,6 +8,8 @@ import {
 } from 'react-icons/fa';
 import api, { API_BASE_URL } from '../utils/api';
 import { COUNTRIES, INDIA_STATES, findCountry } from '../utils/countries';
+import { auth } from '../firebase';
+import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 
 const OTP_LENGTH = 6;
 const RESEND_COOLDOWN = 30; // seconds
@@ -75,7 +77,22 @@ const Register = () => {
 
   const dialCode = findCountry(formData.countryCode).dial;
 
-  // ---------- Step 1 -> Step 2: send the real OTP ----------
+  // ---------- Firebase Recaptcha Setup ----------
+  const setupRecaptcha = () => {
+    if (!window.recaptchaVerifier) {
+      window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        'size': 'invisible',
+        'callback': () => {
+          // reCAPTCHA solved
+        },
+        'expired-callback': () => {
+          toast.error("reCAPTCHA expired. Please try sending OTP again.");
+        }
+      });
+    }
+  };
+
+  // ---------- Step 1 -> Step 2: send OTP via Firebase ----------
   const handleSendOtp = async () => {
     if (!formData.role || !formData.name || !formData.phone) {
       toast.error('Please fill all fields');
@@ -83,17 +100,25 @@ const Register = () => {
     }
     setSendingOtp(true);
     try {
-      const { data } = await api.post('/otp/send-phone-otp', {
-        phone: formData.phone,
-        dialCode,
-      });
-      toast.success(data.message || 'OTP sent!');
+      setupRecaptcha();
+      const appVerifier = window.recaptchaVerifier;
+      const fullPhone = `${dialCode}${formData.phone}`; // Format: +919876543210
+
+      const confirmationResult = await signInWithPhoneNumber(auth, fullPhone, appVerifier);
+      window.confirmationResult = confirmationResult;
+
+      toast.success('OTP sent successfully!');
       setStep(2);
       setResendCooldown(RESEND_COOLDOWN);
       setOtpDigits(Array(OTP_LENGTH).fill(''));
       setTimeout(() => otpRefs.current[0]?.focus(), 100);
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Could not send OTP');
+      console.error("Firebase Send OTP Error:", error);
+      toast.error(error.message || 'Could not send OTP');
+      if (window.recaptchaVerifier) {
+        window.recaptchaVerifier.clear();
+        window.recaptchaVerifier = null;
+      }
     } finally {
       setSendingOtp(false);
     }
@@ -101,21 +126,7 @@ const Register = () => {
 
   const handleResendOtp = async () => {
     if (resendCooldown > 0) return;
-    setSendingOtp(true);
-    try {
-      const { data } = await api.post('/otp/send-phone-otp', {
-        phone: formData.phone,
-        dialCode,
-      });
-      toast.success(data.message || 'OTP resent!');
-      setResendCooldown(RESEND_COOLDOWN);
-      setOtpDigits(Array(OTP_LENGTH).fill(''));
-      otpRefs.current[0]?.focus();
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Could not resend OTP');
-    } finally {
-      setSendingOtp(false);
-    }
+    await handleSendOtp();
   };
 
   const handleOtpDigitChange = (index, value) => {
@@ -146,25 +157,32 @@ const Register = () => {
     otpRefs.current[Math.min(pasted.length, OTP_LENGTH - 1)]?.focus();
   };
 
-  // ---------- Step 2 -> Step 3: verify the real OTP ----------
+  // ---------- Step 2 -> Step 3: verify OTP via Firebase ----------
   const handleVerifyOtp = async () => {
     const otp = otpDigits.join('');
     if (otp.length !== OTP_LENGTH) {
       toast.error(`Please enter the ${OTP_LENGTH}-digit code`);
       return;
     }
+    if (!window.confirmationResult) {
+      toast.error('Session expired. Please click Resend OTP.');
+      return;
+    }
+
     setVerifyingOtp(true);
     try {
-      const { data } = await api.post('/otp/verify-phone-otp', {
-        phone: formData.phone,
-        dialCode,
-        otp,
-      });
-      setPhoneVerificationToken(data.verificationToken);
+      const result = await window.confirmationResult.confirm(otp);
+      const user = result.user;
+
+      // Get Firebase ID token for verification token to send to backend
+      const idToken = await user.getIdToken();
+      setPhoneVerificationToken(idToken);
+
       toast.success('Phone number verified! 🎉');
       setStep(3);
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Incorrect OTP');
+      console.error("Firebase Verify OTP Error:", error);
+      toast.error('Incorrect OTP. Please try again.');
     } finally {
       setVerifyingOtp(false);
     }
@@ -555,6 +573,10 @@ const Register = () => {
             <Link to="/login" className="text-green-600 font-semibold hover:underline">Sign In</Link>
           </p>
         </div>
+
+        {/* Invisible reCAPTCHA Div Container for Firebase Phone Auth */}
+        <div id="recaptcha-container"></div>
+
       </div>
     </div>
   );

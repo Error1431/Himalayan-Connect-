@@ -337,3 +337,30 @@ backend's hosting or custom domain later. The rest of the app (API calls, CORS, 
 callbacks) was already built around `FRONTEND_URL` / `REACT_APP_API_URL` environment
 variables rather than hardcoded addresses (see the Deploying section above) — so pointing
 the whole app at a new custom domain is just an environment-variable change on Render/Vercel, not a code change.
+
+## Forgot Password, Weather Fix, Map on Homestay Form, Multi-Photo Products (this pass)
+
+### Real Forgot Password flow
+- "Forgot password?" link on the Login page.
+- `Backend/controllers/authController.js`: `forgotPassword` emails a real, time-limited (1 hour) reset link; `resetPassword` verifies the token and updates the password. Always responds with the same generic message regardless of whether the email exists, so this endpoint can't be used to check who has an account.
+- New pages: `ForgotPassword.js` and `ResetPassword.js`.
+
+### Weather on the Farmer Dashboard — found and fixed 2 real bugs
+1. `Backend/routes/weather.js` existed but was **never mounted** in `server.js` — every request to it 404'd, which is exactly the "API failed" message you saw.
+2. The frontend (`WeatherAdvisory.jsx`) was calling OpenWeatherMap **directly from the browser** with an **API key hardcoded in the source code** — visible to anyone who opened devtools, and possibly rate-limited/dead from being exposed for a while.
+
+Both fixed: the route is now mounted (`GET /api/weather/current`, `GET /api/weather/forecast`), and the frontend calls the backend instead — the key now lives only in `Backend/.env` (`WEATHER_API_KEY`, already there from earlier).
+
+### Homestay listing form: Map + ZIP code
+Turns out a fully-built `LocationPicker` component (map click-to-set, address search, "use my current location", ZIP verification) already existed in the codebase but was never used on this form. Wired it into `AddHomestay.jsx` — selecting a location now also captures GPS coordinates and ZIP code, both saved on the homestay. Homestay listings also now carry a ready-to-use `mapUrl` (opens the exact location in Google Maps) for the frontend to link to.
+
+### Farmer "Add Product" form: 1–6 photos (was 1 only)
+Same pattern as the homestay form: multi-select upload, thumbnail previews, remove button, minimum 1 required. `Backend/routes/product.js` and `productController.js` updated to accept up to 6 images (`Product.images[]`), keeping the first one as `imageUrl` for older UI bits that only read a single image.
+
+### On the recurring Google Sign-In error
+The specific duplicate-phone bug from earlier is fixed and confirmed working. If Google sign-in is still failing intermittently, the next most common causes on a Render + Vercel + Atlas setup are, in order of likelihood:
+1. **`BACKEND_URL` not set on Render** (or set to the wrong value) — this is used to build the exact callback URL Google redirects to; if it doesn't match what's registered in Google Cloud Console *exactly* (including https/http and no trailing slash), Google will reject it.
+2. **MongoDB Atlas Network Access** not allowing Render's IPs — Atlas blocks all connections by default; under Atlas → Network Access, add `0.0.0.0/0` (allow from anywhere) or you'll get intermittent connection failures that look like random errors.
+3. Google Cloud Console's **Authorized redirect URIs** missing the exact production callback URL (`https://your-backend.onrender.com/api/auth/google/callback`).
+
+Server-side error logging was also improved (`Backend/routes/auth.js`) to print the specific error name/message/code to Render's logs — if it happens again, check the Render service logs right after reproducing it and share that text; the frontend only ever sees a generic error code by design (so failed logins don't leak internal details), so I need the server-side log line to diagnose further.

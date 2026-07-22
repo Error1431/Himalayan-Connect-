@@ -84,7 +84,10 @@ const Login = () => {
 
           {/* Password */}
           <div>
-            <label className="block text-ink-soft-soft dark:text-ink-soft-soft text-sm font-semibold mb-2">Password</label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-ink-soft-soft dark:text-ink-soft-soft text-sm font-semibold">Password</label>
+              <Link to="/forgot-password" className="text-xs font-semibold text-green-600 hover:underline">Forgot password?</Link>
+            </div>
             <div className="relative">
               <FaLock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-ink-soft-soft" />
               <input

@@ -240,3 +240,78 @@ exports.googleCallback = (req, res) => {
   const params = new URLSearchParams({ accessToken, refreshToken });
   res.redirect(`${frontendUrl}/oauth-success?${params.toString()}`);
 };
+
+// POST /api/auth/forgot-password
+// Body: { email }
+// Always responds with the same generic success message whether or not the
+// email exists — this prevents someone from using this endpoint to check
+// which emails are registered on the platform.
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+
+    const user = await User.findOne({ email: email.toLowerCase() });
+
+    if (user) {
+      const rawToken = crypto.randomBytes(32).toString('hex');
+      user.passwordResetToken = hashToken(rawToken);
+      user.passwordResetExpires = Date.now() + 60 * 60 * 1000; // 1 hour
+      await user.save({ validateBeforeSave: false });
+
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      const resetUrl = `${frontendUrl}/reset-password/${rawToken}`;
+
+      try {
+        const { getTransporter } = require('../utils/email');
+        await getTransporter().sendMail({
+          from: process.env.SMTP_FROM || 'Himalaya Connect <no-reply@himalayaconnect.app>',
+          to: user.email,
+          subject: 'Reset your Himalaya Connect password',
+          text: `Hi ${user.name},\n\nWe received a request to reset your password. Click the link below to choose a new one (valid for 1 hour):\n${resetUrl}\n\nIf you didn't request this, you can safely ignore this email — your password will stay the same.\n\n— Himalaya Connect Team`,
+          html: `<p>Hi ${user.name},</p><p>We received a request to reset your password. Click the button below to choose a new one (valid for 1 hour):</p><p><a href="${resetUrl}" style="background:#059669;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;">Reset Password</a></p><p>Or open this link: ${resetUrl}</p><p>If you didn't request this, you can safely ignore this email — your password will stay the same.</p><p>— Himalaya Connect Team</p>`
+        });
+      } catch (emailError) {
+        console.error('Could not send password reset email:', emailError.message);
+      }
+    }
+
+    res.status(200).json({ message: 'If an account exists with that email, a reset link has been sent.' });
+  } catch (error) {
+    res.status(500).json({ message: 'Could not process the request', error: error.message });
+  }
+};
+
+// POST /api/auth/reset-password/:token
+// Body: { password }
+exports.resetPassword = async (req, res) => {
+  try {
+    const { token } = req.params;
+    const { password } = req.body;
+
+    if (!password || password.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters long' });
+    }
+
+    const hashed = hashToken(token);
+    const user = await User.findOne({
+      passwordResetToken: hashed,
+      passwordResetExpires: { $gt: Date.now() }
+    }).select('+passwordResetToken +passwordResetExpires');
+
+    if (!user) {
+      return res.status(400).json({ message: 'This reset link is invalid or has expired. Please request a new one.' });
+    }
+
+    user.password = password; // re-hashed automatically by the pre-save hook
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+    await user.save();
+
+    res.status(200).json({ message: 'Password reset successfully! You can now log in with your new password.' });
+  } catch (error) {
+    res.status(500).json({ message: 'Could not reset password', error: error.message });
+  }
+};
