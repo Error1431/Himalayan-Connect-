@@ -53,6 +53,26 @@ router.post('/', protect, async (req, res) => {
             return res.status(400).json({ success: false, message: 'Cart items are required' });
         }
 
+        // Check stock BEFORE creating any orders — reject the whole order
+        // if anything is short, rather than partially fulfilling it.
+        const productItems = items.filter((i) => i.type === 'product' && i.id);
+        const productDocs = await Product.find({ _id: { $in: productItems.map((i) => i.id) } });
+        const productMap = new Map(productDocs.map((p) => [String(p._id), p]));
+
+        for (const item of productItems) {
+            const product = productMap.get(String(item.id));
+            if (!product) {
+                return res.status(404).json({ success: false, message: `Product "${item.name}" no longer exists.` });
+            }
+            const available = product.availability?.quantity ?? 0;
+            if (!product.availability?.inStock || available <= 0) {
+                return res.status(400).json({ success: false, message: `"${product.productName}" is out of stock.` });
+            }
+            if (item.qty > available) {
+                return res.status(400).json({ success: false, message: `Only ${available} ${product.pricing?.unit || 'unit(s)'} of "${product.productName}" left in stock.` });
+            }
+        }
+
         // Group cart items by seller so each seller gets their own order.
         const bySeller = {};
         for (const item of items) {
@@ -81,6 +101,29 @@ router.post('/', protect, async (req, res) => {
                     : { method: 'cash', status: 'pending' },
                 status: payment && payment.method === 'online' ? 'confirmed' : 'pending'
             }))
+        );
+
+        // Now that the order is placed, deduct the purchased quantity from
+        // each product's stock, and flip it to "Out of Stock" automatically
+        // the moment it hits zero.
+        await Promise.all(
+            productItems.map((item) =>
+                Product.findOneAndUpdate(
+                    { _id: item.id, 'availability.quantity': { $gte: item.qty } },
+                    [
+                        {
+                            $set: {
+                                'availability.quantity': { $subtract: ['$availability.quantity', item.qty] }
+                            }
+                        },
+                        {
+                            $set: {
+                                'availability.inStock': { $gt: ['$availability.quantity', 0] }
+                            }
+                        }
+                    ]
+                )
+            )
         );
 
         res.status(201).json({

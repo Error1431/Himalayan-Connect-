@@ -23,6 +23,11 @@ function formatHomestay(doc) {
     type,
     rating: h.ratings?.totalReviews > 0 ? h.ratings.overall : undefined,
     reviews: h.ratings?.totalReviews || 0,
+    pincode: h.location?.pincode,
+    coordinates: h.location?.coordinates,
+    mapUrl: h.location?.coordinates?.lat
+      ? `https://www.google.com/maps/search/?api=1&query=${h.location.coordinates.lat},${h.location.coordinates.lng}`
+      : undefined,
     // Relative paths (e.g. "/uploads/x.jpg") — the frontend prefixes these
     // with its configured API base URL when rendering.
     images: (h.images || []).map((img) => (typeof img === 'string' ? img : img.url)).filter(Boolean),
@@ -75,7 +80,7 @@ exports.createHomestay = async (req, res, next) => {
     const {
       homestayName, village, district, price, pricePerNight, rooms,
       description, tagline, wifi, meals, parking, bonfire,
-      occupancy, acType
+      occupancy, acType, pincode, lat, lng
     } = req.body;
 
     const finalPrice = Number(price ?? pricePerNight);
@@ -98,7 +103,9 @@ exports.createHomestay = async (req, res, next) => {
       location: {
         village: village || '',
         district: district || '',
-        state: 'Uttarakhand'
+        state: 'Uttarakhand',
+        pincode: pincode || '',
+        coordinates: (lat && lng) ? { lat: Number(lat), lng: Number(lng) } : undefined
       },
       roomTypes: [{
         name: `${occupancyLabel} Room (${acLabel})`,

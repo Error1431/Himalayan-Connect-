@@ -22,7 +22,7 @@ import {
   FaCloudSun, FaTimes, FaMapMarkerAlt,
   FaImage, FaTrash, FaCheckCircle, FaClock, FaArrowUp, FaArrowDown,
   FaCalendarAlt, FaWarehouse, FaInfoCircle, FaCrosshairs, FaSearchLocation,
-  FaChartBar, FaStar
+  FaChartBar, FaStar, FaEdit
 } from 'react-icons/fa';
 
 import LocationPicker from '../components/LocationPicker';
@@ -43,8 +43,8 @@ const EMPTY_PRODUCT = {
   pricing: { basePrice: '', unit: 'kg' },
   availability: { quantity: '' },
   location: { address: '', coordinates: null, zipCode: '' },
-  image: null,
-  imagePreview: null
+  images: [], // File objects, 1-6
+  imagePreviews: [] // matching object URLs
 };
 
 const FarmerDashboard = () => {
@@ -52,6 +52,9 @@ const FarmerDashboard = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [showAddProduct, setShowAddProduct] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null); // product being edited, or null
+  const [editForm, setEditForm] = useState({ productName: '', basePrice: '', quantity: '', description: '' });
+  const [savingEdit, setSavingEdit] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [fetchedProducts, setFetchedProducts] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -194,19 +197,35 @@ const FarmerDashboard = () => {
     }));
   }, [fetchedProducts]);
 
+  const MAX_PRODUCT_IMAGES = 6;
+
   const handleImageChange = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setNewProduct({
-          ...newProduct,
-          image: file,
-          imagePreview: reader.result
-        });
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    setNewProduct((prev) => {
+      const combined = [...prev.images, ...files].slice(0, MAX_PRODUCT_IMAGES);
+      if (prev.images.length + files.length > MAX_PRODUCT_IMAGES) {
+        alert(`You can upload up to ${MAX_PRODUCT_IMAGES} photos — only the first ${MAX_PRODUCT_IMAGES} were kept.`);
+      }
+      return {
+        ...prev,
+        images: combined,
+        imagePreviews: combined.map((f) => URL.createObjectURL(f))
       };
-      reader.readAsDataURL(file);
-    }
+    });
+    e.target.value = ''; // allow re-selecting the same file later
+  };
+
+  const handleRemoveProductImage = (index) => {
+    setNewProduct((prev) => {
+      const nextImages = prev.images.filter((_, i) => i !== index);
+      return {
+        ...prev,
+        images: nextImages,
+        imagePreviews: nextImages.map((f) => URL.createObjectURL(f))
+      };
+    });
   };
 
   const handleRequestGPSLocation = () => {
@@ -328,8 +347,8 @@ const FarmerDashboard = () => {
       return;
     }
 
-    if (!newProduct.image) {
-      alert('Upload product image!');
+    if (!newProduct.images || newProduct.images.length === 0) {
+      alert('Upload at least 1 product photo!');
       return;
     }
 
@@ -346,7 +365,7 @@ const FarmerDashboard = () => {
       formData.append('locationLat', newProduct.location.coordinates.lat);
       formData.append('locationLng', newProduct.location.coordinates.lng);
       formData.append('locationZipCode', newProduct.location.zipCode || '');
-      formData.append('image', newProduct.image);
+      newProduct.images.forEach((file) => formData.append('images', file));
 
       await api.post('/products', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
@@ -372,6 +391,39 @@ const FarmerDashboard = () => {
       fetchDashboardData();
     } catch (error) {
       alert('Delete failed: ' + (error.response?.data?.message || 'Error'));
+    }
+  };
+
+  const openEditProduct = (prod) => {
+    setEditingProduct(prod);
+    setEditForm({
+      productName: prod.productName || '',
+      basePrice: prod.pricing?.basePrice ?? prod.basePrice ?? '',
+      quantity: prod.availability?.quantity ?? prod.quantity ?? '',
+      description: prod.description || '',
+    });
+  };
+
+  const handleSaveEdit = async (e) => {
+    e.preventDefault();
+    if (!editForm.productName.trim() || !editForm.basePrice) {
+      alert('Product name and price are required');
+      return;
+    }
+    setSavingEdit(true);
+    try {
+      await api.put(`/products/${editingProduct._id}`, {
+        productName: editForm.productName.trim(),
+        pricing: { basePrice: Number(editForm.basePrice), unit: editingProduct.pricing?.unit || editingProduct.unit || 'kg' },
+        availability: { quantity: Number(editForm.quantity) || 0 },
+        description: editForm.description,
+      });
+      setEditingProduct(null);
+      fetchDashboardData();
+    } catch (error) {
+      alert('Update failed: ' + (error.response?.data?.message || 'Error'));
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -537,12 +589,22 @@ const FarmerDashboard = () => {
 
                   return (
                     <div key={prod._id} className="border border-gray-100 dark:border-outline rounded-2xl p-4 bg-surface dark:bg-surface hover:shadow-lg transition relative group">
-                      <button
-                        onClick={() => handleDeleteProduct(prod._id)}
-                        className="absolute top-3 right-3 bg-surface dark:bg-surface/90 text-gray-400 dark:text-ink-soft-soft hover:text-red-500 rounded-lg p-1.5 opacity-0 group-hover:opacity-100 transition z-10 shadow"
-                      >
-                        <FaTrash className="text-xs" />
-                      </button>
+                      <div className="absolute top-3 right-3 flex gap-1.5 opacity-0 group-hover:opacity-100 transition z-10">
+                        <button
+                          onClick={() => openEditProduct(prod)}
+                          className="bg-surface dark:bg-surface/90 text-gray-400 dark:text-ink-soft-soft hover:text-blue-500 rounded-lg p-1.5 shadow"
+                          title="Edit product"
+                        >
+                          <FaEdit className="text-xs" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteProduct(prod._id)}
+                          className="bg-surface dark:bg-surface/90 text-gray-400 dark:text-ink-soft-soft hover:text-red-500 rounded-lg p-1.5 shadow"
+                          title="Delete product"
+                        >
+                          <FaTrash className="text-xs" />
+                        </button>
+                      </div>
 
                       <div className="w-full h-40 bg-surface-alt dark:bg-surface-alt rounded-xl mb-3 overflow-hidden flex items-center justify-center">
                         {imageUrl ? (
@@ -869,26 +931,28 @@ const FarmerDashboard = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-500 dark:text-ink-soft-soft uppercase mb-1.5">Product Image *</label>
-                <div className="border-2 border-dashed border-gray-300 dark:border-outline rounded-xl p-6 text-center hover:border-green-500 transition relative bg-surface-alt dark:bg-app-bg">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageChange}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                    required
-                  />
-                  {newProduct.imagePreview ? (
-                    <div className="space-y-2">
-                      <img src={newProduct.imagePreview} alt="Preview" className="w-32 h-32 object-cover mx-auto rounded-lg" />
-                      <p className="text-xs text-green-600 font-medium">{newProduct.image.name}</p>
+                <label className="block text-xs font-semibold text-gray-500 dark:text-ink-soft-soft uppercase mb-1.5">
+                  Product Photos * <span className="normal-case font-normal">(1 required, up to {MAX_PRODUCT_IMAGES})</span>
+                </label>
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                  {newProduct.imagePreviews.map((src, i) => (
+                    <div key={i} className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 dark:border-outline group">
+                      <img src={src} alt={`Product ${i + 1}`} className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveProductImage(i)}
+                        className="absolute top-1 right-1 bg-black/60 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+                      >
+                        <FaTimes size={12} />
+                      </button>
                     </div>
-                  ) : (
-                    <div className="flex flex-col items-center space-y-2">
-                      <FaImage className="text-3xl text-gray-400 dark:text-ink-soft-soft" />
-                      <span className="text-sm font-medium text-ink-soft-soft dark:text-ink-soft-soft">Click to upload</span>
-                      <span className="text-xs text-gray-400 dark:text-ink-soft-soft">PNG, JPG up to 5MB</span>
-                    </div>
+                  ))}
+                  {newProduct.images.length < MAX_PRODUCT_IMAGES && (
+                    <label className="aspect-square rounded-lg border-2 border-dashed border-gray-300 dark:border-outline flex flex-col items-center justify-center gap-1 cursor-pointer text-gray-400 dark:text-ink-soft-soft hover:border-green-500 hover:text-green-600 transition bg-surface-alt dark:bg-app-bg">
+                      <FaImage size={20} />
+                      <span className="text-xs font-semibold">Add Photo</span>
+                      <input type="file" accept="image/*" multiple onChange={handleImageChange} className="hidden" />
+                    </label>
                   )}
                 </div>
               </div>
@@ -920,6 +984,79 @@ const FarmerDashboard = () => {
                   </>
                 )}
               </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {editingProduct && (
+        <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
+          <div className="bg-surface dark:bg-surface rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="p-5 border-b border-gray-100 dark:border-outline flex justify-between items-center bg-gradient-to-r from-green-50 to-blue-50 dark:from-gray-800 dark:to-gray-800">
+              <h3 className="font-bold text-ink-soft dark:text-ink-soft flex items-center gap-2"><FaEdit /> Edit Product</h3>
+              <button onClick={() => setEditingProduct(null)} className="text-gray-400 hover:text-red-500">
+                <FaTimes />
+              </button>
+            </div>
+            <form onSubmit={handleSaveEdit} className="p-5 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 dark:text-ink-soft-soft uppercase mb-1.5">Product Name *</label>
+                <input
+                  type="text"
+                  value={editForm.productName}
+                  onChange={(e) => setEditForm({ ...editForm, productName: e.target.value })}
+                  className="w-full p-3 border border-gray-200 dark:border-outline rounded-xl focus:outline-none focus:border-green-500 bg-surface dark:bg-surface text-ink-soft dark:text-ink-soft"
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 dark:text-ink-soft-soft uppercase mb-1.5">Price (₹) *</label>
+                  <input
+                    type="number"
+                    value={editForm.basePrice}
+                    onChange={(e) => setEditForm({ ...editForm, basePrice: e.target.value })}
+                    className="w-full p-3 border border-gray-200 dark:border-outline rounded-xl focus:outline-none focus:border-green-500 bg-surface dark:bg-surface text-ink-soft dark:text-ink-soft"
+                    required
+                    min="0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 dark:text-ink-soft-soft uppercase mb-1.5">Stock Quantity</label>
+                  <input
+                    type="number"
+                    value={editForm.quantity}
+                    onChange={(e) => setEditForm({ ...editForm, quantity: e.target.value })}
+                    className="w-full p-3 border border-gray-200 dark:border-outline rounded-xl focus:outline-none focus:border-green-500 bg-surface dark:bg-surface text-ink-soft dark:text-ink-soft"
+                    min="0"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 dark:text-ink-soft-soft uppercase mb-1.5">Description</label>
+                <textarea
+                  value={editForm.description}
+                  onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                  rows="3"
+                  className="w-full p-3 border border-gray-200 dark:border-outline rounded-xl focus:outline-none focus:border-green-500 bg-surface dark:bg-surface text-ink-soft dark:text-ink-soft"
+                />
+              </div>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setEditingProduct(null)}
+                  className="flex-1 border-2 border-gray-300 dark:border-outline text-ink-soft-soft dark:text-ink-soft-soft py-2.5 rounded-xl font-semibold hover:bg-surface-alt transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingEdit}
+                  className="flex-1 bg-green-600 text-white py-2.5 rounded-xl font-semibold hover:bg-green-700 transition disabled:opacity-50"
+                >
+                  {savingEdit ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
             </form>
           </div>
         </div>

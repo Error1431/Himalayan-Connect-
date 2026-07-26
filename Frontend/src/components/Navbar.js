@@ -8,7 +8,7 @@ import api, { API_BASE_URL } from '../utils/api';
 import {
   FaMountain, FaBars, FaTimes, FaUser,
   FaSignOutAlt, FaLeaf, FaHome, FaCog,
-  FaEnvelope, FaChevronDown, FaSun, FaMoon, FaShoppingCart, FaHeart
+  FaEnvelope, FaChevronDown, FaSun, FaMoon, FaShoppingCart, FaHeart, FaChartLine
 } from 'react-icons/fa';
 
 const Navbar = () => {
@@ -220,6 +220,16 @@ const Navbar = () => {
                         >
                           <FaUser /> <span>Dashboard</span>
                         </Link>
+
+                        {user.role === 'admin' && (
+                          <Link
+                            to="/admin/analytics"
+                            className="flex items-center space-x-2 px-4 py-2.5 text-sm"
+                            onClick={() => setProfileMenu(false)}
+                          >
+                            <FaChartLine /> <span>Site Analytics</span>
+                          </Link>
+                        )}
 
                         <Link
                           to="/settings"

@@ -337,3 +337,82 @@ backend's hosting or custom domain later. The rest of the app (API calls, CORS, 
 callbacks) was already built around `FRONTEND_URL` / `REACT_APP_API_URL` environment
 variables rather than hardcoded addresses (see the Deploying section above) — so pointing
 the whole app at a new custom domain is just an environment-variable change on Render/Vercel, not a code change.
+
+## Forgot Password, Weather Fix, Map on Homestay Form, Multi-Photo Products (this pass)
+
+### Real Forgot Password flow
+- "Forgot password?" link on the Login page.
+- `Backend/controllers/authController.js`: `forgotPassword` emails a real, time-limited (1 hour) reset link; `resetPassword` verifies the token and updates the password. Always responds with the same generic message regardless of whether the email exists, so this endpoint can't be used to check who has an account.
+- New pages: `ForgotPassword.js` and `ResetPassword.js`.
+
+### Weather on the Farmer Dashboard — found and fixed 2 real bugs
+1. `Backend/routes/weather.js` existed but was **never mounted** in `server.js` — every request to it 404'd, which is exactly the "API failed" message you saw.
+2. The frontend (`WeatherAdvisory.jsx`) was calling OpenWeatherMap **directly from the browser** with an **API key hardcoded in the source code** — visible to anyone who opened devtools, and possibly rate-limited/dead from being exposed for a while.
+
+Both fixed: the route is now mounted (`GET /api/weather/current`, `GET /api/weather/forecast`), and the frontend calls the backend instead — the key now lives only in `Backend/.env` (`WEATHER_API_KEY`, already there from earlier).
+
+### Homestay listing form: Map + ZIP code
+Turns out a fully-built `LocationPicker` component (map click-to-set, address search, "use my current location", ZIP verification) already existed in the codebase but was never used on this form. Wired it into `AddHomestay.jsx` — selecting a location now also captures GPS coordinates and ZIP code, both saved on the homestay. Homestay listings also now carry a ready-to-use `mapUrl` (opens the exact location in Google Maps) for the frontend to link to.
+
+### Farmer "Add Product" form: 1–6 photos (was 1 only)
+Same pattern as the homestay form: multi-select upload, thumbnail previews, remove button, minimum 1 required. `Backend/routes/product.js` and `productController.js` updated to accept up to 6 images (`Product.images[]`), keeping the first one as `imageUrl` for older UI bits that only read a single image.
+
+### On the recurring Google Sign-In error
+The specific duplicate-phone bug from earlier is fixed and confirmed working. If Google sign-in is still failing intermittently, the next most common causes on a Render + Vercel + Atlas setup are, in order of likelihood:
+1. **`BACKEND_URL` not set on Render** (or set to the wrong value) — this is used to build the exact callback URL Google redirects to; if it doesn't match what's registered in Google Cloud Console *exactly* (including https/http and no trailing slash), Google will reject it.
+2. **MongoDB Atlas Network Access** not allowing Render's IPs — Atlas blocks all connections by default; under Atlas → Network Access, add `0.0.0.0/0` (allow from anywhere) or you'll get intermittent connection failures that look like random errors.
+3. Google Cloud Console's **Authorized redirect URIs** missing the exact production callback URL (`https://your-backend.onrender.com/api/auth/google/callback`).
+
+Server-side error logging was also improved (`Backend/routes/auth.js`) to print the specific error name/message/code to Render's logs — if it happens again, check the Render service logs right after reproducing it and share that text; the frontend only ever sees a generic error code by design (so failed logins don't leak internal details), so I need the server-side log line to diagnose further.
+
+## Stock Management, Firebase SMS OTP, Smart Bilingual AI, Analytics (this pass)
+
+### Automatic Out-of-Stock
+Placing an order now checks and deducts real stock server-side (`Backend/routes/orders.js`):
+- Rejects the order if there isn't enough stock (with a clear message).
+- Deducts the purchased quantity from `Product.availability.quantity` on success.
+- Flips `availability.inStock` to `false` automatically the instant quantity hits 0.
+- Products/checkout pages show a real "Out of Stock" badge, disable Buy Now/Add to Cart, cap the quantity picker at what's actually available, and show "Only X left!" once stock is low.
+
+### Real phone SMS OTP via Firebase (not just console/Fast2SMS)
+The frontend already had a complete Firebase Phone Auth flow written (reCAPTCHA, send/verify OTP) — it just needed two connecting pieces to actually work end-to-end:
+1. `firebase` wasn't listed in `Frontend/package.json`.
+2. The backend was still checking phone verification against its own custom OTP system, which doesn't understand Firebase's tokens — so a real, successfully-verified Firebase OTP would still get rejected at registration.
+
+Added `Backend/config/firebaseAdmin.js`, which verifies the Firebase ID token server-side via the Admin SDK and confirms it matches the phone being registered. **Firebase is now the primary path** for phone OTP (real SMS, free, via Google's infrastructure); the earlier Fast2SMS/console system remains as an automatic fallback if Firebase isn't configured.
+
+**To activate:** Firebase Console → Project Settings → Service Accounts → Generate new private key → copy the 3 fields into `Backend/.env` (`FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`). Your `Frontend/src/firebase.js` web config was already set up correctly.
+
+### Smart, bilingual AI ("Pahadi Mitra")
+The real-AI escalation path (`Backend/services/openaiService.js`, Week 7) now explicitly mirrors the user's language in every reply — English stays English, Hindi (Devanagari) stays Hindi, and Hinglish (Hindi typed in Roman letters) gets a natural Hinglish reply back, including for things like full recipes, not just the opening line.
+
+### Site Analytics (visitor traffic + registered users)
+New admin-only dashboard at `/admin/analytics` (linked from the profile menu for `role: 'admin'` accounts):
+- Page views (24h / 7d / 30d / all-time), with a real daily traffic chart.
+- Unique-visitor estimate (anonymous per-browser id in localStorage — no cookies, no personal data).
+- Total registered users, new users this week, and a breakdown by role (farmer/homestay/customer).
+- Top 10 most-visited pages.
+
+Tracking itself is anonymous and fire-and-forget (`Frontend/src/utils/analytics.js`, wired into route changes in `App.js`) — it never blocks or affects the user's experience if it fails. Backend: `Backend/models/PageView.js`, `Backend/controllers/analyticsController.js`, `Backend/routes/analytics.js`.
+
+**Note:** no user currently has `role: 'admin'` by default — you'll need to manually set one account's `role` to `'admin'` in MongoDB Atlas (Compass or the Atlas web UI) to access this dashboard.
+
+### Global Error Boundary (Week 8)
+Added `Frontend/src/components/ErrorBoundary.jsx`, wrapping the whole app in `index.jsx`. Previously, any unexpected JavaScript error anywhere in the React tree would crash the entire app to a blank white screen. Now it shows a friendly "Something went wrong" screen with Reload/Home options, and logs the actual error to the console for debugging — the rest of the site keeps working.
+
+## Week 8 — Full CRUD, Real Listings Management (this pass)
+
+### Products: full Update now works (Create/Read/Delete already did)
+Farmer Dashboard → My Products → hover a product card → **Edit** button (pencil icon) opens a modal to update name, price, stock quantity, and description, saving via the existing `PUT /api/products/:id` (backend route already existed, just had no UI). Delete already had a confirmation prompt.
+
+### Homestay listings: went from 100% mock data to real, manageable listings
+The Homestay Dashboard never actually fetched the owner's real homestays — the whole page was hardcoded stats and a fake "Recent Bookings" table (`Arun Sharma`, `Meera Patel`, etc. — not connected to any database). Added a real **"My Listings"** section: fetches your actual homestays (`GET /api/homestays/mine`), with a proper empty state ("No homestays listed yet") when you haven't added one, and **Edit**/**Delete** buttons on each card (Edit opens a modal for name/price/room count; Delete asks for confirmation first). The rest of that dashboard (revenue chart, occupancy stats, AI review sentiment) is still illustrative/sample content — real booking-based analytics for homestays would need its own backend aggregation endpoint (similar to the Farmer Dashboard's Market Analysis tab from Week 7) which wasn't in scope for this pass; happy to build that next if useful.
+
+### Where Week 8's checklist stands now
+- ✅ Zero mock data in the main data-driven flows (products, homestays, orders, reviews) — sample/dummy cards only ever appear as an explicit fallback when there's truly no real data yet, clearly labeled, non-interactive.
+- ✅ Full CRUD (Create/Read/Update/Delete), through the actual UI, for both Products and Homestay listings.
+- ✅ Confirmation dialogs before every destructive action (product delete, homestay delete, post delete).
+- ✅ Empty states across all major lists (Wishlist, Orders, My Products, My Listings, product/homestay search, reviews).
+- ✅ Global Error Boundary — an unexpected error anywhere no longer blanks the whole app.
+- ⚠️ **Responsive check at exact 375px/768px/1440px breakpoints** — the codebase uses Tailwind's standard responsive classes throughout (and the mobile nav bug from earlier is fixed), but I haven't done a systematic screenshot-by-screenshot pass at those 3 exact widths since I can't drive a real browser from here. Worth doing a manual pass, especially on the longer dashboard pages, before final submission.
+- ⚠️ **Performance pass** (useMemo/useCallback audit, checking for duplicate API calls, oversized images) — not systematically done in this pass; the app should perform fine for a demo/small-scale deployment, but a dedicated profiling pass wasn't part of this round.

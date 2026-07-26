@@ -5,7 +5,8 @@ const { validateRegister, validateLogin } = require('../middleware/validators');
 const { passport, googleConfigured } = require('../config/passport');
 const {
     register, login, getMe, refreshToken, logout,
-    verifyEmail, resendVerification, googleCallback
+    verifyEmail, resendVerification, googleCallback,
+    forgotPassword, resetPassword
 } = require('../controllers/authController');
 
 const router = express.Router();
@@ -17,6 +18,8 @@ router.post('/refresh-token', refreshToken);
 router.post('/logout', logout);
 router.get('/verify-email/:token', verifyEmail);
 router.post('/resend-verification', protect, resendVerification);
+router.post('/forgot-password', authLimiter, forgotPassword);
+router.post('/reset-password/:token', authLimiter, resetPassword);
 
 // Google OAuth ("Sign in with Google") — only active once GOOGLE_CLIENT_ID
 // and GOOGLE_CLIENT_SECRET are set in .env (see config/passport.js).
@@ -42,7 +45,9 @@ router.get('/google/callback', (req, res, next) => {
 
     passport.authenticate('google', { session: false }, (err, user, info) => {
         if (err) {
-            console.error('Google OAuth error:', err.message);
+            // Logged with full detail server-side (visible in Render logs)
+            // since the frontend only ever sees a short error code.
+            console.error('Google OAuth error:', err.name, '-', err.message, err.code ? `(code: ${err.code})` : '');
             const code = err.code === 11000 ? 'google_duplicate_account' : 'google_auth_failed';
             return res.redirect(`${frontendUrl}/login?oauth_error=${code}`);
         }

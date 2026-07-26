@@ -137,6 +137,8 @@ mountRoute('/api/profile', ['profile', 'profileRoutes']);
 mountRoute('/api/reviews', ['reviews', 'reviewRoutes']);
 mountRoute('/api/otp', ['otp', 'otpRoutes']);
 mountRoute('/api/verification', ['verification', 'verificationRoutes']);
+mountRoute('/api/weather', ['weather', 'weatherRoutes']);
+mountRoute('/api/analytics', ['analytics', 'analyticsRoutes']);
 
 app.get('/api/orders/farmer', (req, res) => {
   res.json([]);

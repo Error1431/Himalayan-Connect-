@@ -4,12 +4,11 @@ import {
     FaWind, FaTint, FaThermometerHalf, FaExclamationTriangle,
     FaSeedling, FaUmbrella, FaSpinner
 } from 'react-icons/fa';
+import api from '../utils/api';
 
-// ─────────────────────────────────────────────
-//  CONFIG →  OpenWeatherMap API key 
-//  Free key: https://openweathermap.org/api (One Call API 3.0 or Current Weather)
-// ─────────────────────────────────────────────
-const OPENWEATHER_API_KEY = '876193a1f2815c7d4015c198912f67f3';
+// Weather is now fetched through the backend (GET /api/weather/current and
+// /api/weather/forecast) so the OpenWeatherMap API key stays server-side
+// instead of being hardcoded and exposed in the frontend bundle.
 
 const getWeatherIcon = (condition, size = 'text-3xl') => {
     const map = {
@@ -89,14 +88,12 @@ const WeatherAdvisory = ({ lat = 30.7346, lng = 79.0669, locationName = 'Kedarna
             setError(null);
             try {
                 const [currentRes, forecastRes] = await Promise.all([
-                    fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lng}&units=metric&appid=${OPENWEATHER_API_KEY}`),
-                    fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lng}&units=metric&appid=${OPENWEATHER_API_KEY}`)
+                    api.get('/weather/current', { params: { lat, lon: lng } }),
+                    api.get('/weather/forecast', { params: { lat, lon: lng } })
                 ]);
 
-                if (!currentRes.ok || !forecastRes.ok) throw new Error('Weather API error');
-
-                const currentData = await currentRes.json();
-                const forecastData = await forecastRes.json();
+                const currentData = currentRes.data;
+                const forecastData = forecastRes.data;
 
                 // Take one forecast entry per day (every 8th = 24hrs apart in 3-hr steps)
                 const dailyForecast = forecastData.list.filter((_, i) => i % 8 === 0).slice(0, 5);
@@ -107,7 +104,14 @@ const WeatherAdvisory = ({ lat = 30.7346, lng = 79.0669, locationName = 'Kedarna
                 }
             } catch (err) {
                 console.error('Weather fetch error:', err);
-                if (isMounted) setError('Mausam data load nahi ho saka. API key check karein.');
+                if (isMounted) {
+                    const code = err.response?.data?.code;
+                    setError(
+                        code === 'WEATHER_NOT_CONFIGURED'
+                            ? 'Weather is not configured on this server yet.'
+                            : 'Mausam data load nahi ho saka. Please try again shortly.'
+                    );
+                }
             } finally {
                 if (isMounted) setLoading(false);
             }

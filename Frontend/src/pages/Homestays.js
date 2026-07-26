@@ -1,4 +1,3 @@
-import ImageCarousel from '../components/ImageCarousel';
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaStar, FaMapMarkerAlt, FaHeart, FaRegHeart, FaCommentDots, FaUserCircle } from 'react-icons/fa';
@@ -7,7 +6,7 @@ import { Loader } from '../components/ui';
 import { useToast } from '../components/ToastContainer';
 import { useAuth } from '../context/AuthContext';
 import { useWishlist } from '../context/WishlistContext';
-
+import ImageCarousel from '../components/ImageCarousel';
 const DUMMY_HOMESTAYS = [
   {
     _id: 'dummy_1',

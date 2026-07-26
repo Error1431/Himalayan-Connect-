@@ -12,6 +12,10 @@ import BookingConfirmation from './pages/BookingConfirmation';
 import ProductCheckout from './pages/ProductCheckout';
 import CartCheckout from './pages/CartCheckout';
 import Wishlist from './pages/Wishlist';
+import ForgotPassword from './pages/ForgotPassword';
+import { trackPageView } from './utils/analytics';
+import ResetPassword from './pages/ResetPassword';
+import AdminAnalytics from './pages/AdminAnalytics';
 import Register from './pages/Register';
 import NotFound from './pages/NotFound';
 import FarmerDashboard from './pages/FarmerDashboard';
@@ -60,6 +64,7 @@ function ScrollToTop() {
   const { pathname } = useLocation();
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    trackPageView(pathname);
   }, [pathname]);
   return null;
 }
@@ -808,6 +813,11 @@ function AppContent() {
           } />
           <Route path="/wishlist" element={
             <div style={{ paddingTop: 64 }}><PrivateRoute><Wishlist /></PrivateRoute></div>
+          } />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
+          <Route path="/admin/analytics" element={
+            <div style={{ paddingTop: 64 }}><PrivateRoute><AdminAnalytics /></PrivateRoute></div>
           } />
           <Route path="/profile/:id" element={<SellerProfile />} />
           <Route path="/support/contact" element={<ContactPage />} />

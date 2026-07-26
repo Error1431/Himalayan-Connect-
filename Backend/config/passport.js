@@ -8,7 +8,7 @@ const User = require('../models/User');
 const googleConfigured = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
 
 if (googleConfigured) {
-  const backendUrl = process.env.BACKEND_URL || `https://localhost:${process.env.PORT || 5000}`;
+  const backendUrl = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 5000}`;
 
   passport.use(
     new GoogleStrategy(

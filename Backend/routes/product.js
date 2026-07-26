@@ -17,7 +17,7 @@ router.get('/my-products', protect, getMyProducts);
 router.get('/search', searchProducts);
 router.get('/', getProducts);
 router.get('/:id', getProductById);
-router.post('/', protect, authorize('farmer'), upload.single('image'), createProduct);
+router.post('/', protect, authorize('farmer'), upload.array('images', 6), createProduct);
 router.put('/:id', protect, updateProduct);
 router.delete('/:id', protect, deleteProduct);
 

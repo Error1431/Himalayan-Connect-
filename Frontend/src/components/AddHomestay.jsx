@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { FaCamera, FaTimes, FaWifi, FaUtensils, FaParking, FaFire } from 'react-icons/fa';
 import Input from './ui/Input';
 import Button from './ui/Button';
+import LocationPicker from './LocationPicker';
 import { useToast } from './ToastContainer';
 import api from '../utils/api';
 
@@ -27,6 +28,7 @@ export default function AddHomestay() {
     const [images, setImages] = useState([]); // File objects
     const [previews, setPreviews] = useState([]); // object URLs
     const [submitting, setSubmitting] = useState(false);
+    const [mapLocation, setMapLocation] = useState(null); // { address, coordinates: {lat,lng}, zipCode }
 
     const handleChange = (field) => (e) => {
         const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
@@ -54,8 +56,9 @@ export default function AddHomestay() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!form.title || !form.location || !form.pricePerNight) {
-            addToast('Please fill in all required fields', 'error');
+        const effectiveLocation = mapLocation?.address || form.location;
+        if (!form.title || !effectiveLocation || !form.pricePerNight) {
+            addToast('Please fill in all required fields, including location', 'error');
             return;
         }
         if (images.length === 0) {
@@ -64,7 +67,7 @@ export default function AddHomestay() {
         }
 
         // "Village, District" style location -> split for the backend
-        const [village = '', district = ''] = form.location.split(',').map((s) => s.trim());
+        const [village = '', district = ''] = effectiveLocation.split(',').map((s) => s.trim());
 
         setSubmitting(true);
         try {
@@ -81,6 +84,11 @@ export default function AddHomestay() {
             data.append('meals', form.meals);
             data.append('parking', form.parking);
             data.append('bonfire', form.bonfire);
+            if (mapLocation?.zipCode) data.append('pincode', mapLocation.zipCode);
+            if (mapLocation?.coordinates?.lat) {
+                data.append('lat', mapLocation.coordinates.lat);
+                data.append('lng', mapLocation.coordinates.lng);
+            }
             images.forEach((file) => data.append('images', file));
 
             await api.post('/homestays', data, {
@@ -94,6 +102,7 @@ export default function AddHomestay() {
             });
             setImages([]);
             setPreviews([]);
+            setMapLocation(null);
             navigate('/homestays');
         } catch (error) {
             addToast(error.response?.data?.message || 'Could not submit listing', 'error');
@@ -113,13 +122,23 @@ export default function AddHomestay() {
                 onChange={handleChange('title')}
                 required
             />
-            <Input
-                label="Location"
-                placeholder="Village, District, Uttarakhand"
-                value={form.location}
-                onChange={handleChange('location')}
-                required
+
+            <LocationPicker
+                value={mapLocation}
+                onChange={(loc) => {
+                    setMapLocation(loc);
+                    setForm((prev) => ({ ...prev, location: loc.address || prev.location }));
+                }}
             />
+            {!mapLocation?.coordinates && (
+                <Input
+                    label="Location (fallback if map isn't available)"
+                    placeholder="Village, District, Uttarakhand"
+                    value={form.location}
+                    onChange={handleChange('location')}
+                    required
+                />
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Input
