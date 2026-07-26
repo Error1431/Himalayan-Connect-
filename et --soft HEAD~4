@@ -1,0 +1,10 @@
+[33m226b262[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m feat(backend): optimize API routes, database models, and service layer integration
+[33mbfb905d[m feat(backend): optimize API routes, database models, and service layer integration
+[33m185f792[m[33m ([m[1;31morigin/main[m[33m)[m fix: added firebase dependency in package.json
+[33mcb351f4[m feat: complete week 8 frontend integration and UI polish
+[33m5844a76[m fix
+[33m001621d[m Update code and fixed bugs
+[33m995346b[m Change backend URL to use HTTPS for local development
+[33md256946[m feat: login fixed and automated copyright protection added
+[33maad172a[m Update authController.js
+[33m5731eee[m Add frontendUrl to request object in auth.js
