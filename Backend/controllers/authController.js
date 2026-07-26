@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const User = require('../models/User');
 const { sendVerificationEmail } = require('../utils/email');
 const { checkPhoneVerificationToken } = require('./otpController');
+const { isFirebaseConfigured, verifyFirebasePhoneToken } = require('../config/firebaseAdmin');
 
 function buildUserResponse(user) {
   const obj = user.toObject ? user.toObject() : user;
@@ -41,10 +42,16 @@ exports.register = async (req, res, next) => {
       return res.status(400).json({ message: 'Password must be at least 6 characters long' });
     }
 
-    // The phone must have gone through the real OTP flow (POST
-    // /api/otp/send-phone-otp then /verify-phone-otp) — this proves the
-    // number actually belongs to the person registering.
-    const isPhoneVerified = await checkPhoneVerificationToken(phone, phoneVerificationToken);
+    // The phone must have gone through real OTP verification. Two paths
+    // are supported: Firebase Phone Auth (frontend sends a Firebase ID
+    // token — the primary path, since it sends real SMS via Google's
+    // infrastructure for free) or the fallback OTP system (POST
+    // /api/otp/send-phone-otp then /verify-phone-otp, using Fast2SMS or
+    // the console in dev) for when Firebase isn't configured.
+    const isPhoneVerified = isFirebaseConfigured()
+      ? await verifyFirebasePhoneToken(phoneVerificationToken, phone)
+      : await checkPhoneVerificationToken(phone, phoneVerificationToken);
+
     if (!isPhoneVerified) {
       return res.status(400).json({ message: 'Phone number is not verified. Please verify it with the OTP first.' });
     }

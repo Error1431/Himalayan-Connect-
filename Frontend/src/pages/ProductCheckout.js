@@ -169,11 +169,20 @@ const ProductCheckout = () => {
               <p className="font-bold text-ink-soft dark:text-ink-soft">{product.productName}</p>
               <p className="text-sm text-ink-soft-soft dark:text-ink-soft-soft">by {getSellerName(product)}</p>
               <p className="text-green-600 font-bold">₹{price}/{unit}</p>
+              {product.quantity != null && (
+                <p className={`text-xs mt-0.5 ${product.quantity <= 5 ? 'text-amber-600 font-semibold' : 'text-gray-400'}`}>
+                  {product.quantity <= 5 ? `Only ${product.quantity} ${unit} left!` : `${product.quantity} ${unit} in stock`}
+                </p>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <button onClick={() => setQuantity((q) => Math.max(1, q - 1))} className="w-8 h-8 rounded-lg border border-gray-300 dark:border-outline font-bold">-</button>
               <span className="w-8 text-center font-semibold">{quantity}</span>
-              <button onClick={() => setQuantity((q) => q + 1)} className="w-8 h-8 rounded-lg border border-gray-300 dark:border-outline font-bold">+</button>
+              <button
+                onClick={() => setQuantity((q) => Math.min(product.quantity ?? 99, q + 1))}
+                disabled={product.quantity != null && quantity >= product.quantity}
+                className="w-8 h-8 rounded-lg border border-gray-300 dark:border-outline font-bold disabled:opacity-40 disabled:cursor-not-allowed"
+              >+</button>
             </div>
           </div>
 

@@ -13,7 +13,13 @@ import ProductCheckout from './pages/ProductCheckout';
 import CartCheckout from './pages/CartCheckout';
 import Wishlist from './pages/Wishlist';
 import ForgotPassword from './pages/ForgotPassword';
+<<<<<<< HEAD
 import ResetPassword from './pages/ResetPassword';
+=======
+import { trackPageView } from './utils/analytics';
+import ResetPassword from './pages/ResetPassword';
+import AdminAnalytics from './pages/AdminAnalytics';
+>>>>>>> bab38d8 (feat: add API configuration and axios client setup with interceptors)
 import Register from './pages/Register';
 import NotFound from './pages/NotFound';
 import FarmerDashboard from './pages/FarmerDashboard';
@@ -62,6 +68,7 @@ function ScrollToTop() {
   const { pathname } = useLocation();
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    trackPageView(pathname);
   }, [pathname]);
   return null;
 }
@@ -813,6 +820,12 @@ function AppContent() {
           } />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password/:token" element={<ResetPassword />} />
+<<<<<<< HEAD
+=======
+          <Route path="/admin/analytics" element={
+            <div style={{ paddingTop: 64 }}><PrivateRoute><AdminAnalytics /></PrivateRoute></div>
+          } />
+>>>>>>> bab38d8 (feat: add API configuration and axios client setup with interceptors)
           <Route path="/profile/:id" element={<SellerProfile />} />
           <Route path="/support/contact" element={<ContactPage />} />
           <Route path="/support/safety" element={<SafetyPage />} />

@@ -138,6 +138,10 @@ mountRoute('/api/reviews', ['reviews', 'reviewRoutes']);
 mountRoute('/api/otp', ['otp', 'otpRoutes']);
 mountRoute('/api/verification', ['verification', 'verificationRoutes']);
 mountRoute('/api/weather', ['weather', 'weatherRoutes']);
+<<<<<<< HEAD
+=======
+mountRoute('/api/analytics', ['analytics', 'analyticsRoutes']);
+>>>>>>> bab38d8 (feat: add API configuration and axios client setup with interceptors)
 
 app.get('/api/orders/farmer', (req, res) => {
   res.json([]);

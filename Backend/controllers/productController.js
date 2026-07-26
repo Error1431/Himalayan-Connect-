@@ -17,6 +17,7 @@ function formatProduct(doc) {
     basePrice: p.pricing?.basePrice,
     unit: p.pricing?.unit,
     quantity: p.availability?.quantity,
+    inStock: p.availability?.inStock !== false && (p.availability?.quantity ?? 1) > 0,
   };
 }
 

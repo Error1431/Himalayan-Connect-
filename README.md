@@ -364,3 +364,58 @@ The specific duplicate-phone bug from earlier is fixed and confirmed working. If
 3. Google Cloud Console's **Authorized redirect URIs** missing the exact production callback URL (`https://your-backend.onrender.com/api/auth/google/callback`).
 
 Server-side error logging was also improved (`Backend/routes/auth.js`) to print the specific error name/message/code to Render's logs — if it happens again, check the Render service logs right after reproducing it and share that text; the frontend only ever sees a generic error code by design (so failed logins don't leak internal details), so I need the server-side log line to diagnose further.
+<<<<<<< HEAD
+=======
+
+## Stock Management, Firebase SMS OTP, Smart Bilingual AI, Analytics (this pass)
+
+### Automatic Out-of-Stock
+Placing an order now checks and deducts real stock server-side (`Backend/routes/orders.js`):
+- Rejects the order if there isn't enough stock (with a clear message).
+- Deducts the purchased quantity from `Product.availability.quantity` on success.
+- Flips `availability.inStock` to `false` automatically the instant quantity hits 0.
+- Products/checkout pages show a real "Out of Stock" badge, disable Buy Now/Add to Cart, cap the quantity picker at what's actually available, and show "Only X left!" once stock is low.
+
+### Real phone SMS OTP via Firebase (not just console/Fast2SMS)
+The frontend already had a complete Firebase Phone Auth flow written (reCAPTCHA, send/verify OTP) — it just needed two connecting pieces to actually work end-to-end:
+1. `firebase` wasn't listed in `Frontend/package.json`.
+2. The backend was still checking phone verification against its own custom OTP system, which doesn't understand Firebase's tokens — so a real, successfully-verified Firebase OTP would still get rejected at registration.
+
+Added `Backend/config/firebaseAdmin.js`, which verifies the Firebase ID token server-side via the Admin SDK and confirms it matches the phone being registered. **Firebase is now the primary path** for phone OTP (real SMS, free, via Google's infrastructure); the earlier Fast2SMS/console system remains as an automatic fallback if Firebase isn't configured.
+
+**To activate:** Firebase Console → Project Settings → Service Accounts → Generate new private key → copy the 3 fields into `Backend/.env` (`FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`). Your `Frontend/src/firebase.js` web config was already set up correctly.
+
+### Smart, bilingual AI ("Pahadi Mitra")
+The real-AI escalation path (`Backend/services/openaiService.js`, Week 7) now explicitly mirrors the user's language in every reply — English stays English, Hindi (Devanagari) stays Hindi, and Hinglish (Hindi typed in Roman letters) gets a natural Hinglish reply back, including for things like full recipes, not just the opening line.
+
+### Site Analytics (visitor traffic + registered users)
+New admin-only dashboard at `/admin/analytics` (linked from the profile menu for `role: 'admin'` accounts):
+- Page views (24h / 7d / 30d / all-time), with a real daily traffic chart.
+- Unique-visitor estimate (anonymous per-browser id in localStorage — no cookies, no personal data).
+- Total registered users, new users this week, and a breakdown by role (farmer/homestay/customer).
+- Top 10 most-visited pages.
+
+Tracking itself is anonymous and fire-and-forget (`Frontend/src/utils/analytics.js`, wired into route changes in `App.js`) — it never blocks or affects the user's experience if it fails. Backend: `Backend/models/PageView.js`, `Backend/controllers/analyticsController.js`, `Backend/routes/analytics.js`.
+
+**Note:** no user currently has `role: 'admin'` by default — you'll need to manually set one account's `role` to `'admin'` in MongoDB Atlas (Compass or the Atlas web UI) to access this dashboard.
+
+### Global Error Boundary (Week 8)
+Added `Frontend/src/components/ErrorBoundary.jsx`, wrapping the whole app in `index.jsx`. Previously, any unexpected JavaScript error anywhere in the React tree would crash the entire app to a blank white screen. Now it shows a friendly "Something went wrong" screen with Reload/Home options, and logs the actual error to the console for debugging — the rest of the site keeps working.
+
+## Week 8 — Full CRUD, Real Listings Management (this pass)
+
+### Products: full Update now works (Create/Read/Delete already did)
+Farmer Dashboard → My Products → hover a product card → **Edit** button (pencil icon) opens a modal to update name, price, stock quantity, and description, saving via the existing `PUT /api/products/:id` (backend route already existed, just had no UI). Delete already had a confirmation prompt.
+
+### Homestay listings: went from 100% mock data to real, manageable listings
+The Homestay Dashboard never actually fetched the owner's real homestays — the whole page was hardcoded stats and a fake "Recent Bookings" table (`Arun Sharma`, `Meera Patel`, etc. — not connected to any database). Added a real **"My Listings"** section: fetches your actual homestays (`GET /api/homestays/mine`), with a proper empty state ("No homestays listed yet") when you haven't added one, and **Edit**/**Delete** buttons on each card (Edit opens a modal for name/price/room count; Delete asks for confirmation first). The rest of that dashboard (revenue chart, occupancy stats, AI review sentiment) is still illustrative/sample content — real booking-based analytics for homestays would need its own backend aggregation endpoint (similar to the Farmer Dashboard's Market Analysis tab from Week 7) which wasn't in scope for this pass; happy to build that next if useful.
+
+### Where Week 8's checklist stands now
+- ✅ Zero mock data in the main data-driven flows (products, homestays, orders, reviews) — sample/dummy cards only ever appear as an explicit fallback when there's truly no real data yet, clearly labeled, non-interactive.
+- ✅ Full CRUD (Create/Read/Update/Delete), through the actual UI, for both Products and Homestay listings.
+- ✅ Confirmation dialogs before every destructive action (product delete, homestay delete, post delete).
+- ✅ Empty states across all major lists (Wishlist, Orders, My Products, My Listings, product/homestay search, reviews).
+- ✅ Global Error Boundary — an unexpected error anywhere no longer blanks the whole app.
+- ⚠️ **Responsive check at exact 375px/768px/1440px breakpoints** — the codebase uses Tailwind's standard responsive classes throughout (and the mobile nav bug from earlier is fixed), but I haven't done a systematic screenshot-by-screenshot pass at those 3 exact widths since I can't drive a real browser from here. Worth doing a manual pass, especially on the longer dashboard pages, before final submission.
+- ⚠️ **Performance pass** (useMemo/useCallback audit, checking for duplicate API calls, oversized images) — not systematically done in this pass; the app should perform fine for a demo/small-scale deployment, but a dedicated profiling pass wasn't part of this round.
+>>>>>>> bab38d8 (feat: add API configuration and axios client setup with interceptors)

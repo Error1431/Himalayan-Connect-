@@ -125,6 +125,10 @@ const Products = () => {
       addToast('This is a sample listing — real products will appear here once farmers list them.', 'info');
       return;
     }
+    if (product.inStock === false) {
+      addToast('This product is out of stock right now.', 'error');
+      return;
+    }
     if (!user) {
       addToast('Please login to buy this product', 'info');
       navigate('/login');
@@ -139,6 +143,10 @@ const Products = () => {
   const handleAddToCart = (product) => {
     if (product.isSample) {
       addToast('This is a sample listing — it can\'t be added to cart yet.', 'info');
+      return;
+    }
+    if (product.inStock === false) {
+      addToast('This product is out of stock right now.', 'error');
       return;
     }
     const price = product.pricing?.basePrice || product.basePrice;
@@ -254,7 +262,12 @@ const Products = () => {
               <div key={product._id} className="bg-surface dark:bg-surface rounded-3xl shadow-sm hover:shadow-xl border border-gray-100/80 dark:border-outline overflow-hidden flex flex-col justify-between transition-all duration-500 group">
                 <div>
                   <div className="w-full h-52 overflow-hidden bg-surface-alt dark:bg-surface-alt relative">
-                    <img src={getProductImage(product)} alt={product.productName} className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700 ease-out" onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&w=600&q=80'; }} />
+                    <img src={getProductImage(product)} alt={product.productName} className={`w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700 ease-out ${product.inStock === false ? 'grayscale opacity-60' : ''}`} onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&w=600&q=80'; }} />
+                    {product.inStock === false && (
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                        <span className="bg-red-600 text-white text-xs font-black px-4 py-1.5 rounded-full uppercase tracking-wide shadow-lg">Out of Stock</span>
+                      </div>
+                    )}
                     <span className="absolute top-4 left-4 bg-surface/95 dark:bg-surface/95 backdrop-blur-sm text-emerald-800 dark:text-emerald-300 text-xs font-bold px-3 py-1.5 rounded-full shadow-sm flex items-center gap-1 border border-gray-100 dark:border-outline">
                       <FaLeaf className="text-emerald-500" /> {product.category}
                     </span>
@@ -301,12 +314,19 @@ const Products = () => {
                 <div className="p-5 pt-0 mt-4 border-t border-gray-50/60 dark:border-outline">
                   <div className="flex items-center justify-between pt-3">
                     <div><span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">₹{product.pricing?.basePrice || product.basePrice}</span><span className="text-xs font-medium text-gray-400 dark:text-ink-soft-soft">/{product.pricing?.unit || product.unit || 'kg'}</span></div>
-                    <button onClick={() => handleBuyNow(product)} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm px-5 py-2.5 rounded-2xl flex items-center gap-2 shadow-sm transition-all active:scale-95"><FaShoppingBag className="text-base" /> Buy Now</button>
+                    <button
+                      onClick={() => handleBuyNow(product)}
+                      disabled={product.inStock === false}
+                      className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 dark:disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-bold text-sm px-5 py-2.5 rounded-2xl flex items-center gap-2 shadow-sm transition-all active:scale-95"
+                    >
+                      <FaShoppingBag className="text-base" /> {product.inStock === false ? 'Out of Stock' : 'Buy Now'}
+                    </button>
                   </div>
                   <div className="flex items-center gap-2 mt-3">
                     <button
                       onClick={() => handleAddToCart(product)}
-                      className="flex-1 bg-surface-alt dark:bg-surface-alt hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-ink-soft dark:text-ink-soft font-bold text-xs px-3 py-2.5 rounded-xl flex items-center justify-center gap-1.5 border border-gray-200 dark:border-outline transition-all active:scale-95"
+                      disabled={product.inStock === false}
+                      className="flex-1 bg-surface-alt dark:bg-surface-alt hover:bg-emerald-50 dark:hover:bg-emerald-900/30 disabled:opacity-50 disabled:cursor-not-allowed text-ink-soft dark:text-ink-soft font-bold text-xs px-3 py-2.5 rounded-xl flex items-center justify-center gap-1.5 border border-gray-200 dark:border-outline transition-all active:scale-95"
                     >
                       <FaShoppingCart className="text-sm" /> Add to Cart
                     </button>

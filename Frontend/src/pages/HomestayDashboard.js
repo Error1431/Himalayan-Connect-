@@ -1,16 +1,94 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Line, Bar, Doughnut } from 'react-chartjs-2';
 import {
   FaHome, FaCalendarCheck, FaRupeeSign, FaStar,
-  FaUsers, FaChartLine, FaBed, FaCommentDots, FaPlus
+  FaUsers, FaChartLine, FaBed, FaCommentDots, FaPlus,
+  FaEdit, FaTrash, FaTimes
 } from 'react-icons/fa';
+import api, { API_BASE_URL } from '../utils/api';
+import { resolveImageUrl } from '../utils/media';
+import { useToast } from '../components/ToastContainer';
 
 const HomestayDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { addToast } = useToast();
   const [activeTab, setActiveTab] = useState('overview');
+  const [myListings, setMyListings] = useState([]);
+  const [loadingListings, setLoadingListings] = useState(true);
+  const [editingListing, setEditingListing] = useState(null);
+  const [editForm, setEditForm] = useState({ homestayName: '', price: '', rooms: '' });
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  useEffect(() => {
+    const fetchMyListings = async () => {
+      try {
+        const res = await api.get('/homestays/mine');
+        const list = Array.isArray(res.data) ? res.data : (res.data.homestays || res.data.data || []);
+        setMyListings(list);
+      } catch (error) {
+        console.error('Could not load your homestay listings:', error);
+      } finally {
+        setLoadingListings(false);
+      }
+    };
+    fetchMyListings();
+  }, []);
+
+  const openEditListing = (listing) => {
+    setEditingListing(listing);
+    setEditForm({
+      homestayName: listing.homestayName || '',
+      price: listing.price || listing.roomTypes?.[0]?.pricing?.basePrice || '',
+      rooms: listing.roomTypes?.[0]?.totalRooms || '',
+    });
+  };
+
+  const handleSaveListingEdit = async (e) => {
+    e.preventDefault();
+    if (!editForm.homestayName.trim() || !editForm.price) {
+      addToast('Name and price are required', 'error');
+      return;
+    }
+    setSavingEdit(true);
+    try {
+      const existingRoomType = editingListing.roomTypes?.[0] || {};
+      await api.put(`/homestays/${editingListing._id}`, {
+        homestayName: editForm.homestayName.trim(),
+        roomTypes: [
+          {
+            ...existingRoomType,
+            totalRooms: Number(editForm.rooms) || existingRoomType.totalRooms,
+            availableRooms: Number(editForm.rooms) || existingRoomType.availableRooms,
+            pricing: { ...existingRoomType.pricing, basePrice: Number(editForm.price) },
+          },
+          ...(editingListing.roomTypes?.slice(1) || []),
+        ],
+      });
+      addToast('Listing updated!', 'success');
+      setEditingListing(null);
+      const res = await api.get('/homestays/mine');
+      const list = Array.isArray(res.data) ? res.data : (res.data.homestays || res.data.data || []);
+      setMyListings(list);
+    } catch (error) {
+      addToast(error.response?.data?.message || 'Could not update listing', 'error');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const handleDeleteListing = async (id) => {
+    if (!window.confirm('Delete this homestay listing? This cannot be undone.')) return;
+    try {
+      await api.delete(`/homestays/${id}`);
+      addToast('Listing deleted', 'success');
+      setMyListings((prev) => prev.filter((h) => h._id !== id));
+    } catch (error) {
+      addToast(error.response?.data?.message || 'Could not delete listing', 'error');
+    }
+  };
 
   const stats = [
     { icon: FaCalendarCheck, label: 'Bookings (Month)', value: '24', color: 'bg-blue-500', change: '+15%' },
@@ -105,6 +183,49 @@ const HomestayDashboard = () => {
               <FaHome /> <span>My Homestay Profile</span>
             </button>
           </div>
+        </div>
+
+        {/* My Listings — real data, with Edit/Delete */}
+        <div className="bg-surface dark:bg-surface rounded-xl shadow-sm dark:shadow-none p-6 mb-8">
+          <h3 className="text-lg font-bold text-ink-soft dark:text-ink-soft mb-4 flex items-center gap-2">
+            <FaHome className="text-green-600" /> My Listings
+          </h3>
+          {loadingListings ? (
+            <div className="flex justify-center py-10">
+              <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          ) : myListings.length === 0 ? (
+            <div className="text-center py-10">
+              <FaHome className="text-4xl text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+              <p className="text-gray-400 dark:text-ink-soft-soft">No homestays listed yet — click "Add Homestay" above to create your first one.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {myListings.map((listing) => (
+                <div key={listing._id} className="border border-gray-100 dark:border-outline rounded-xl overflow-hidden relative group">
+                  <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition z-10">
+                    <button onClick={() => openEditListing(listing)} title="Edit" className="bg-surface/90 text-gray-500 hover:text-blue-500 rounded-lg p-1.5 shadow">
+                      <FaEdit className="text-xs" />
+                    </button>
+                    <button onClick={() => handleDeleteListing(listing._id)} title="Delete" className="bg-surface/90 text-gray-500 hover:text-red-500 rounded-lg p-1.5 shadow">
+                      <FaTrash className="text-xs" />
+                    </button>
+                  </div>
+                  <img
+                    src={resolveImageUrl(listing.image || listing.images?.[0])}
+                    alt={listing.homestayName}
+                    className="w-full h-32 object-cover"
+                    onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1518780664697-55e3ad937233?auto=format&fit=crop&w=400&q=80'; }}
+                  />
+                  <div className="p-3">
+                    <p className="font-bold text-sm text-ink-soft dark:text-ink-soft truncate">{listing.homestayName}</p>
+                    <p className="text-xs text-gray-400 dark:text-ink-soft-soft">{listing.village}, {listing.district}</p>
+                    <p className="text-green-600 font-bold text-sm mt-1">₹{listing.price || listing.roomTypes?.[0]?.pricing?.basePrice}/night</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Stats */}
@@ -243,6 +364,70 @@ const HomestayDashboard = () => {
           </div>
         </div>
       </div>
+
+      {editingListing && (
+        <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
+          <div className="bg-surface dark:bg-surface rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="p-5 border-b border-gray-100 dark:border-outline flex justify-between items-center bg-gradient-to-r from-green-50 to-blue-50 dark:from-gray-800 dark:to-gray-800">
+              <h3 className="font-bold text-ink-soft dark:text-ink-soft flex items-center gap-2"><FaEdit /> Edit Listing</h3>
+              <button onClick={() => setEditingListing(null)} className="text-gray-400 hover:text-red-500">
+                <FaTimes />
+              </button>
+            </div>
+            <form onSubmit={handleSaveListingEdit} className="p-5 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 dark:text-ink-soft-soft uppercase mb-1.5">Homestay Name *</label>
+                <input
+                  type="text"
+                  value={editForm.homestayName}
+                  onChange={(e) => setEditForm({ ...editForm, homestayName: e.target.value })}
+                  className="w-full p-3 border border-gray-200 dark:border-outline rounded-xl focus:outline-none focus:border-green-500 bg-surface dark:bg-surface text-ink-soft dark:text-ink-soft"
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 dark:text-ink-soft-soft uppercase mb-1.5">Price/Night (₹) *</label>
+                  <input
+                    type="number"
+                    value={editForm.price}
+                    onChange={(e) => setEditForm({ ...editForm, price: e.target.value })}
+                    className="w-full p-3 border border-gray-200 dark:border-outline rounded-xl focus:outline-none focus:border-green-500 bg-surface dark:bg-surface text-ink-soft dark:text-ink-soft"
+                    required
+                    min="0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 dark:text-ink-soft-soft uppercase mb-1.5">Total Rooms</label>
+                  <input
+                    type="number"
+                    value={editForm.rooms}
+                    onChange={(e) => setEditForm({ ...editForm, rooms: e.target.value })}
+                    className="w-full p-3 border border-gray-200 dark:border-outline rounded-xl focus:outline-none focus:border-green-500 bg-surface dark:bg-surface text-ink-soft dark:text-ink-soft"
+                    min="1"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setEditingListing(null)}
+                  className="flex-1 border-2 border-gray-300 dark:border-outline text-ink-soft-soft dark:text-ink-soft-soft py-2.5 rounded-xl font-semibold hover:bg-surface-alt transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingEdit}
+                  className="flex-1 bg-green-600 text-white py-2.5 rounded-xl font-semibold hover:bg-green-700 transition disabled:opacity-50"
+                >
+                  {savingEdit ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

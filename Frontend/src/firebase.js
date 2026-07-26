@@ -1,6 +1,10 @@
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
+<<<<<<< HEAD
 import { getAuth } from "firebase/auth"; // 
+=======
+import { getAuth } from "firebase/auth"; // 👈 1. Auth import kiya
+>>>>>>> bab38d8 (feat: add API configuration and axios client setup with interceptors)
 
 const firebaseConfig = {
     apiKey: "AIzaSyA11ofyk31IHhF82nY0NCgXH_FT-FEoJvQ",
@@ -16,6 +20,10 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
 
+<<<<<<< HEAD
+=======
+// 👈 2. Auth initialize karke EXPORT kar diya
+>>>>>>> bab38d8 (feat: add API configuration and axios client setup with interceptors)
 export const auth = getAuth(app);
 
 export default app;
