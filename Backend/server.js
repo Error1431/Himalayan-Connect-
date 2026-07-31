@@ -25,11 +25,18 @@ const PORT = process.env.PORT || 5000;
 // whatever FRONTEND_URL is set to (e.g. the real Vercel URL in production).
 const allowedOrigins = Array.from(new Set([FRONTEND_URL, 'http://localhost:3000']));
 
+// Vercel gives every deployment (production AND every preview build) its
+// own unique subdomain like "himalayan-connect-abc123.vercel.app" — a
+// single fixed FRONTEND_URL can't cover all of them, which is exactly what
+// caused the reported CORS block on a preview URL. Any *.vercel.app origin
+// is allowed automatically in addition to the explicit allow-list above.
+const vercelPreviewPattern = /^https:\/\/[a-z0-9-]+\.vercel\.app$/i;
+
 const corsOptions = {
   origin: (origin, callback) => {
     // Allow non-browser requests (curl, Postman, server-to-server) which
     // don't send an Origin header at all.
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (!origin || allowedOrigins.includes(origin) || vercelPreviewPattern.test(origin)) {
       return callback(null, true);
     }
     return callback(new Error('Not allowed by CORS'));

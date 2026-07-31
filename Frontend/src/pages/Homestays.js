@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { FaStar, FaMapMarkerAlt, FaHeart, FaRegHeart, FaCommentDots, FaUserCircle } from 'react-icons/fa';
 import api from '../utils/api';
 import { Loader } from '../components/ui';
@@ -48,10 +48,22 @@ const DUMMY_HOMESTAYS = [
 
 const Homestays = () => {
   const [filter, setFilter] = useState('all');
+  const [acFilter, setAcFilter] = useState('all'); // 'all' | 'ac' | 'non-ac'
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Lets the navbar's "Homestays" mega-menu link straight to a price tier
+  // and/or AC type, e.g. /homestays?filter=premium&ac=ac
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const f = params.get('filter');
+    const ac = params.get('ac');
+    if (f && ['all', 'budget', 'mid', 'premium'].includes(f)) setFilter(f);
+    if (ac && ['all', 'ac', 'non-ac'].includes(ac)) setAcFilter(ac);
+  }, [location.search]);
   const [homestays, setHomestays] = useState([]);
   const [loading, setLoading] = useState(true);
   const { addToast } = useToast();
-  const navigate = useNavigate();
   const { user } = useAuth();
   const { isWishlisted, toggleWishlist } = useWishlist();
 
@@ -109,7 +121,14 @@ const Homestays = () => {
     fetchHomestays();
   }, [addToast]);
 
-  const filtered = filter === 'all' ? homestays : homestays.filter((h) => h.type === filter);
+  const hasAcAmenity = (h, want) => {
+    const amenities = (h.roomTypes || []).flatMap((rt) => rt.amenities || []).map((a) => a.toLowerCase());
+    return want === 'ac' ? amenities.includes('ac') : amenities.includes('non-ac');
+  };
+
+  const filtered = homestays
+    .filter((h) => filter === 'all' || h.type === filter)
+    .filter((h) => acFilter === 'all' || h.isSample || hasAcAmenity(h, acFilter));
 
   return (
     <div className="bg-surface-alt dark:bg-gray-900 min-h-screen py-12 px-4 sm:px-6 lg:px-8">
@@ -140,6 +159,25 @@ const Homestays = () => {
               className={`px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-300 border ${filter === f.key
                 ? 'bg-green-600 text-white border-green-600 shadow-md shadow-green-100'
                 : 'bg-surface dark:bg-gray-800 text-ink-soft-soft dark: border-gray-200 dark:border-gray-700 hover:bg-surface-alt dark:hover:bg-gray-700 hover:text-ink-soft dark:hover:text-white'
+                }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex justify-center gap-3 mb-12 flex-wrap">
+          {[
+            { key: 'all', label: 'All Rooms' },
+            { key: 'ac', label: '❄️ AC' },
+            { key: 'non-ac', label: '🌬️ Non-AC' },
+          ].map((f) => (
+            <button
+              key={f.key}
+              onClick={() => setAcFilter(f.key)}
+              className={`px-5 py-2 rounded-full text-xs font-semibold transition-all duration-300 border ${acFilter === f.key
+                ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-100'
+                : 'bg-surface dark:bg-gray-800 text-ink-soft-soft dark:border-gray-200 dark:border-gray-700 hover:bg-surface-alt dark:hover:bg-gray-700 hover:text-ink-soft dark:hover:text-white'
                 }`}
             >
               {f.label}
