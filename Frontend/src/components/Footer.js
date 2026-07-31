@@ -5,7 +5,7 @@ import { FaMapMarkerAlt, FaPhoneAlt, FaEnvelope } from 'react-icons/fa';
 const Footer = () => {
   return (
     <footer className="bg-[#111827] text-gray-400 dark:text-ink-soft-soft py-12 px-6 border-t border-gray-800">
-      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-5 gap-8">
+      <div className="max-w-7xl mx-auto grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-x-6 gap-y-10">
 
         <div>
           <h4 className="text-white font-bold uppercase tracking-wider text-sm mb-4">Support</h4>
@@ -47,7 +47,7 @@ const Footer = () => {
           </ul>
         </div>
 
-        <div>
+        <div className="col-span-2 sm:col-span-1">
           <h4 className="text-white font-bold uppercase tracking-wider text-sm mb-4">Contact Interface</h4>
           <ul className="space-y-3 text-sm">
             <li className="flex items-start gap-2.5">

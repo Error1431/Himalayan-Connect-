@@ -364,8 +364,6 @@ The specific duplicate-phone bug from earlier is fixed and confirmed working. If
 3. Google Cloud Console's **Authorized redirect URIs** missing the exact production callback URL (`https://your-backend.onrender.com/api/auth/google/callback`).
 
 Server-side error logging was also improved (`Backend/routes/auth.js`) to print the specific error name/message/code to Render's logs — if it happens again, check the Render service logs right after reproducing it and share that text; the frontend only ever sees a generic error code by design (so failed logins don't leak internal details), so I need the server-side log line to diagnose further.
-<<<<<<< HEAD
-=======
 
 ## Stock Management, Firebase SMS OTP, Smart Bilingual AI, Analytics (this pass)
 
@@ -418,4 +416,41 @@ The Homestay Dashboard never actually fetched the owner's real homestays — the
 - ✅ Global Error Boundary — an unexpected error anywhere no longer blanks the whole app.
 - ⚠️ **Responsive check at exact 375px/768px/1440px breakpoints** — the codebase uses Tailwind's standard responsive classes throughout (and the mobile nav bug from earlier is fixed), but I haven't done a systematic screenshot-by-screenshot pass at those 3 exact widths since I can't drive a real browser from here. Worth doing a manual pass, especially on the longer dashboard pages, before final submission.
 - ⚠️ **Performance pass** (useMemo/useCallback audit, checking for duplicate API calls, oversized images) — not systematically done in this pass; the app should perform fine for a demo/small-scale deployment, but a dedicated profiling pass wasn't part of this round.
->>>>>>> bab38d8 (feat: add API configuration and axios client setup with interceptors)
+
+## Production Bugs Fixed: CORS, Firebase OTP Stuck, Mobile Footer, Mega-Menus (this pass)
+
+### CORS blocking the deployed Vercel site
+The reported error (`No 'Access-Control-Allow-Origin' header`) happened because Vercel gives **every deployment its own unique subdomain** (e.g. `himalayan-connect-error1431.vercel.app`), and the backend's CORS config only ever allowed one fixed `FRONTEND_URL`. Fixed in `Backend/server.js`: any `*.vercel.app` origin is now allowed automatically, in addition to your explicit `FRONTEND_URL` — so preview deployments and URL changes no longer break API access. **Also double-check** `FRONTEND_URL` on Render is set to your actual production Vercel URL for anything not on `*.vercel.app` (e.g. once you add a custom `.com`/`.in` domain, add that as `FRONTEND_URL` too).
+
+### "Sending OTP..." stuck forever
+Two things were happening at once, per your console log:
+1. Firebase's reCAPTCHA step can hang indefinitely instead of cleanly failing when something is misconfigured — most commonly, **the current domain isn't in Firebase's Authorized Domains list**. Your console showed `Failed to initialize reCAPTCHA Enterprise config` and failed fetches to `google.com/recaptcha/...`, which points at exactly this. **Fix:** Firebase Console → Authentication → Settings → Authorized domains → add your Vercel domain(s) (e.g. `himalayan-connect-error1431.vercel.app`, and your production domain once you have one).
+2. Even once that's fixed, the button could still theoretically hang on a slow/dropped connection — added a 20-second hard timeout (`Register.js`) so the button always recovers with a clear error message instead of spinning forever, no matter what.
+
+### Mobile footer looked like one long list
+It technically wasn't broken (no overflow/crash), but with 5 full sections stacked one on top of the other in a single column, it read as one giant undifferentiated list of ~20 links on a phone. Changed to a proper 2-column grid on mobile (3 columns on tablets, 5 on desktop) — much more compact and scannable.
+
+### Navbar: hover mega-menus
+- **Organic Produce** → hover shows all categories (All Products, Pulses, Millets, Processed, Vegetables) — clicking one goes straight to `/products?category=X`, pre-filtered.
+- **Homestays** → hover shows price tiers (Budget/Mid-Range/Premium) and, new, a **Room Type (AC / Non-AC)** filter — clicking goes to `/homestays?filter=X` or `?ac=X`, pre-filtered. The AC/Non-AC filter itself is new — homestays now filter by the room amenity tag set when a host lists AC vs Non-AC rooms (Week 7's Add Homestay form).
+
+### On "3D" and further AI enhancements
+"Make the whole site 3D" is quite open-ended without more specific direction (which pages/sections, what kind of 3D — subtle depth/shadows/parallax vs actual 3D models via Three.js are very different amounts of work). Happy to do a focused pass on specific sections (e.g. the homepage hero, product cards) if you point me at what you have in mind, or share a reference site/screenshot of the look you want. The AI's language-matching (English/Hindi/Hinglish) from the previous pass is already live — let me know if there's a specific AI behavior that still feels off and I'll dig into that directly.
+
+## Homepage Redesign — Premium, Story-Driven, OnePlus-Inspired (this pass)
+
+Replaced the old generic homepage (icon-in-a-circle feature cards, stock hero image with a brightness filter, a green-and-yellow palette that could belong to any farm-to-table site) with a deliberate, subject-specific design:
+
+**New palette:** near-black `#0A0F0A` backgrounds, warm parchment text `#F7F3E8`, one bold accent — Himalayan sunrise/marigold orange `#E8562C` — with a muted sage `#8FA876` for secondary labels. Big, black-weight, tightly-tracked headlines instead of default bold.
+
+**The signature element — 3D tilt cards:** every produce and homestay story card tilts in real 3D as your cursor moves across it (`Frontend/src/components/HimalayaShowcase.jsx`, pure CSS `perspective`/`rotateX`/`rotateY`, no WebGL — fast and reliable on any device, including phones, where it's simply disabled since there's no hover).
+
+**Real storytelling, not generic copy** — two new full sections:
+- **"The Produce"** — 4 alternating image/text blocks (Rajma, Mandua, Pahadi Ghee, Wild Honey) with actual specifics: altitude, soil, harvest method, and village-level detail — not "100% organic and fresh."
+- **"The Stays"** — 3 location-driven cards (Chopta, Ukhimath, Dugalbitta) explaining what's actually special about *where* each one sits — the trek it's a gateway to, the temple nearby, the view, the silence.
+
+The existing functional grids ("Shop the Produce", "Book a Stay" — pulling real/live products and homestays from the database) are kept right below the storytelling sections, restyled to match, so the page still does its job of actually selling and booking, not just looking good.
+
+**Scroll-triggered reveals** (Framer Motion, already a dependency) bring each section in as you scroll, once, without re-triggering — deliberate motion in one place rather than scattered effects everywhere.
+
+Nothing was deleted — `components/Hero.js` (the old hero) is still in the codebase, just no longer used by the homepage, in case you want to reference it or reuse it elsewhere.

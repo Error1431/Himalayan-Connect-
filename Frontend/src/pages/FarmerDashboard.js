@@ -414,8 +414,9 @@ const FarmerDashboard = () => {
     try {
       await api.put(`/products/${editingProduct._id}`, {
         productName: editForm.productName.trim(),
-        pricing: { basePrice: Number(editForm.basePrice), unit: editingProduct.pricing?.unit || editingProduct.unit || 'kg' },
-        availability: { quantity: Number(editForm.quantity) || 0 },
+        basePrice: Number(editForm.basePrice),
+        unit: editingProduct.pricing?.unit || editingProduct.unit || 'kg',
+        quantity: Number(editForm.quantity) || 0,
         description: editForm.description,
       });
       setEditingProduct(null);

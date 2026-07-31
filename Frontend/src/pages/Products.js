@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import api, { API_BASE_URL } from '../utils/api';
 import { FaLeaf, FaMapMarkerAlt, FaStar, FaSearch, FaTimes, FaShoppingCart, FaShoppingBag, FaHeart, FaRegHeart, FaCommentDots, FaUserCircle } from 'react-icons/fa';
 import { Loader } from '../components/ui';
@@ -29,6 +29,17 @@ const Products = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const { addToast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Lets the navbar's "Organic Produce" mega-menu link straight to a
+  // category, e.g. /products?category=Pulses
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const category = params.get('category');
+    if (category && CATEGORIES.includes(category)) {
+      setActiveCategory(category);
+    }
+  }, [location.search]);
   const { user } = useAuth();
   const { addToCart } = useCart();
   const { isWishlisted, toggleWishlist } = useWishlist();

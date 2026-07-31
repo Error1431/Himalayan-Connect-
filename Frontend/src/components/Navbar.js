@@ -137,12 +137,64 @@ const Navbar = () => {
               <Link to="/" className={`flex items-center space-x-1.5 py-1 px-1 ${isActive('/')}`}>
                 <FaHome className="text-xs" /> <span className="text-sm">Home</span>
               </Link>
-              <Link to="/products" className={`flex items-center space-x-1.5 py-1 px-1 ${isActive('/products')}`}>
-                <FaLeaf className="text-xs" /> <span className="text-sm">Organic Produce</span>
-              </Link>
-              <Link to="/homestays" className={`flex items-center space-x-1.5 py-1 px-1 ${isActive('/homestays')}`}>
-                <FaMountain className="text-xs" /> <span className="text-sm">Homestays</span>
-              </Link>
+
+              <div className="relative group py-1">
+                <Link to="/products" className={`flex items-center space-x-1.5 px-1 ${isActive('/products')}`}>
+                  <FaLeaf className="text-xs" /> <span className="text-sm">Organic Produce</span>
+                </Link>
+                <div className="absolute left-1/2 -translate-x-1/2 top-full pt-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 z-50">
+                  <div className="bg-surface dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 py-2 w-48">
+                    {['All Products', 'Pulses', 'Millets', 'Processed', 'Vegetables'].map((cat) => (
+                      <Link
+                        key={cat}
+                        to={`/products?category=${encodeURIComponent(cat)}`}
+                        className="block px-4 py-2 text-sm text-ink-soft-soft dark:text-gray-300 hover:bg-surface-alt dark:hover:bg-gray-700 hover:text-green-600 dark:hover:text-green-400 transition"
+                      >
+                        {cat}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="relative group py-1">
+                <Link to="/homestays" className={`flex items-center space-x-1.5 px-1 ${isActive('/homestays')}`}>
+                  <FaMountain className="text-xs" /> <span className="text-sm">Homestays</span>
+                </Link>
+                <div className="absolute left-1/2 -translate-x-1/2 top-full pt-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-150 z-50">
+                  <div className="bg-surface dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 py-2 w-52">
+                    <p className="px-4 pt-1 pb-1.5 text-[10px] font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500">Price</p>
+                    {[
+                      { key: 'all', label: 'All Stays' },
+                      { key: 'budget', label: 'Budget (< ₹2000)' },
+                      { key: 'mid', label: 'Mid-Range' },
+                      { key: 'premium', label: 'Premium' },
+                    ].map((f) => (
+                      <Link
+                        key={f.key}
+                        to={`/homestays?filter=${f.key}`}
+                        className="block px-4 py-2 text-sm text-ink-soft-soft dark:text-gray-300 hover:bg-surface-alt dark:hover:bg-gray-700 hover:text-green-600 dark:hover:text-green-400 transition"
+                      >
+                        {f.label}
+                      </Link>
+                    ))}
+                    <div className="border-t border-gray-100 dark:border-gray-700 my-1.5"></div>
+                    <p className="px-4 pt-1 pb-1.5 text-[10px] font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500">Room Type</p>
+                    {[
+                      { key: 'ac', label: '❄️ AC' },
+                      { key: 'non-ac', label: '🌬️ Non-AC' },
+                    ].map((f) => (
+                      <Link
+                        key={f.key}
+                        to={`/homestays?ac=${f.key}`}
+                        className="block px-4 py-2 text-sm text-ink-soft-soft dark:text-gray-300 hover:bg-surface-alt dark:hover:bg-gray-700 hover:text-green-600 dark:hover:text-green-400 transition"
+                      >
+                        {f.label}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              </div>
 
               <Link to="/cart" className="relative">
                 <FaShoppingCart className="text-xl" />
