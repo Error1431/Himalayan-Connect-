@@ -104,7 +104,20 @@ const Register = () => {
       const appVerifier = window.recaptchaVerifier;
       const fullPhone = `${dialCode}${formData.phone}`; // Format: +919876543210
 
-      const confirmationResult = await signInWithPhoneNumber(auth, fullPhone, appVerifier);
+      // Firebase's reCAPTCHA step can hang indefinitely (rather than cleanly
+      // reject) when something is misconfigured on the Firebase Console side
+      // — most commonly the current domain not being in Authentication →
+      // Settings → Authorized domains. A hard timeout guarantees the button
+      // never gets stuck forever, whatever the underlying cause.
+      const OTP_SEND_TIMEOUT_MS = 20000;
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('TIMEOUT')), OTP_SEND_TIMEOUT_MS)
+      );
+
+      const confirmationResult = await Promise.race([
+        signInWithPhoneNumber(auth, fullPhone, appVerifier),
+        timeoutPromise,
+      ]);
       window.confirmationResult = confirmationResult;
 
       toast.success('OTP sent successfully!');
@@ -113,8 +126,16 @@ const Register = () => {
       setOtpDigits(Array(OTP_LENGTH).fill(''));
       setTimeout(() => otpRefs.current[0]?.focus(), 100);
     } catch (error) {
-      console.error("Firebase Send OTP Error:", error);
-      toast.error(error.message || 'Could not send OTP');
+      console.error('Firebase Send OTP Error:', error);
+      const message =
+        error.message === 'TIMEOUT'
+          ? "Couldn't send the OTP — this usually means this website's domain hasn't been added to Firebase's Authorized domains list yet. Please try again in a moment, or contact support."
+          : error.code === 'auth/invalid-phone-number'
+          ? 'That phone number looks invalid — please double check it.'
+          : error.code === 'auth/too-many-requests'
+          ? 'Too many attempts from this device. Please wait a while before trying again.'
+          : error.message || 'Could not send OTP';
+      toast.error(message, { autoClose: 7000 });
       if (window.recaptchaVerifier) {
         window.recaptchaVerifier.clear();
         window.recaptchaVerifier = null;
