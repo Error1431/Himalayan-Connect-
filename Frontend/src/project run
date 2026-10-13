@@ -1,0 +1,15 @@
+# Terminal 1 — MongoDB
+mongod
+
+# Terminal 2 — Backend  
+cd backend
+npm install
+npm run dev
+# Output: ✅ MongoDB Connected — Server on port 5000
+
+# Terminal 3 — Frontend
+cd frontend
+npx create-react-app .    # (only first time)
+npm install react-router-dom axios react-query react-icons react-toastify chart.js react-chartjs-2 socket.io-client
+npm start
+# Output: ✅ App running on http://localhost:3000
